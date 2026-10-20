@@ -274,6 +274,45 @@
       }
     });
 
+    // Click directly on an SVG connector spline to disconnect it
+    this.container.addEventListener('click', function (e) {
+      var path = e.target.closest('.sideview-connector-path');
+      if (!path) return;
+      e.stopPropagation();
+      var connId = path.dataset.connId;
+      if (connId) {
+        self.removeConnection(connId);
+      }
+    });
+
+    // Right-click contextmenu on SVG spline or port to disconnect
+    this.container.addEventListener('contextmenu', function (e) {
+      var path = e.target.closest('.sideview-connector-path');
+      if (path) {
+        e.preventDefault();
+        e.stopPropagation();
+        var connId = path.dataset.connId;
+        if (connId) self.removeConnection(connId);
+        return;
+      }
+
+      var port = e.target.closest('.sideview-col-port');
+      if (port) {
+        var colName = port.dataset.colName;
+        var cardEl = port.closest('.sideview-card');
+        var cardName = cardEl ? cardEl.dataset.cardName : '';
+        var connsToRemove = self.connections.filter(function (c) {
+          return (c.fromTable === cardName && c.fromCol === colName) ||
+                 (c.toTable === cardName && c.toCol === colName);
+        });
+        if (connsToRemove.length > 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          connsToRemove.forEach(function (c) { self.removeConnection(c.id); });
+        }
+      }
+    });
+
     // Drawer tab switching
     this.container.addEventListener('click', function (e) {
       var tab = e.target.closest('.sideview-drawer-tab');
@@ -770,6 +809,10 @@
     path.setAttribute('class', 'sideview-connector-path');
     path.dataset.connId = connId;
 
+    var titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    titleEl.textContent = 'Click to disconnect ' + connData.fromCol + ' ↔ ' + connData.toCol;
+    path.appendChild(titleEl);
+
     this.svg.appendChild(path);
 
     var connection = Object.assign({ id: connId, path: path }, connData);
@@ -794,6 +837,51 @@
   /**
    * Compute cubic bezier curve path string between two ports
    */
+  /**
+   * Remove a single connection by ID and update code
+   */
+  SideviewEngine.prototype.removeConnection = function (connId) {
+    var self = this;
+    var index = -1;
+    for (var i = 0; i < this.connections.length; i++) {
+      if (this.connections[i].id === connId) {
+        index = i;
+        break;
+      }
+    }
+    if (index === -1) return;
+
+    var conn = this.connections[index];
+    if (conn.path && conn.path.parentNode) {
+      conn.path.parentNode.removeChild(conn.path);
+    }
+    this.connections.splice(index, 1);
+
+    // Recompute code based on remaining connections
+    if (this.connections.length > 0) {
+      var lastConn = this.connections[this.connections.length - 1];
+      var joinCode = lastConn.fromTable + ' %>%
+  dplyr::left_join(' +
+        lastConn.toTable + ', by = c("' + lastConn.fromCol + '" = "' + lastConn.toCol + '"))';
+      this.updateDrawerCode(joinCode);
+    } else {
+      this.generatedCode = '';
+      var codeText = this.container.querySelector('.sideview-code-text');
+      if (codeText) {
+        codeText.textContent = '# Connect two columns to generate pipeline code';
+      }
+    }
+
+    this.showToast('Disconnected ' + conn.fromCol + ' ↔ ' + conn.toCol, 'info');
+    sendToShiny('column_disconnected', {
+      conn_id: connId,
+      from_table: conn.fromTable,
+      from_col: conn.fromCol,
+      to_table: conn.toTable,
+      to_col: conn.toCol
+    });
+  };
+
   SideviewEngine.prototype.getBezierPath = function (p1, p2) {
     var dir = p2.x >= p1.x ? 1 : -1;
     var dx = Math.max(40, Math.abs(p2.x - p1.x) * 0.45) * dir;

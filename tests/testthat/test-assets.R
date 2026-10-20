@@ -111,6 +111,10 @@ test_that("sideview.js contains required functions, event handlers, and Shiny in
   # Clear operations and reset functionality
   expect_match(js, "clearOperations|clear-operation", 
                info = "sideview.js must support clearing operations and resetting connectors")
+  
+  # Disconnect individual column splines
+  expect_match(js, "removeConnection|column_disconnected", 
+               info = "sideview.js must support disconnecting individual column splines")
 })
 
 test_that("panzoom.min.js contains a valid Panzoom library implementation", {

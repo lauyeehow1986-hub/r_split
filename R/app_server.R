@@ -85,6 +85,13 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
     dispatch_message("sideview_code_update", list(code = code))
   }, ignoreInit = FALSE)
 
+  # 1b. Column Disconnected -> Sync Event
+  shiny::observeEvent(input$column_disconnected, {
+    evt <- input$column_disconnected
+    if (is.null(evt)) return()
+    # Disconnected event logged / available in session
+  }, ignoreInit = FALSE)
+
   # 2. Column Renamed -> Rename Code Generation
   shiny::observeEvent(input$column_renamed, {
     evt <- input$column_renamed
