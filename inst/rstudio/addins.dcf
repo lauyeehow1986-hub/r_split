@@ -1,0 +1,4 @@
+Name: Sideview Canvas
+Description: Interactive multi-table 2D infinite canvas with panzoom, field mapping, and LLM code generation.
+Binding: sideview_addin
+Interactive: true
