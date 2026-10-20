@@ -7,8 +7,8 @@
 
 ## Overview
 
-When analyzing complex data workflows, data scientists frequently work
-with multiple related tables simultaneously: clinical demographics,
+When analyzing complex workflows, data scientists frequently work with
+multiple related tables simultaneously: clinical demographics,
 longitudinal vitals, lab panels, crosswalk dictionaries, and summary
 reports.
 
@@ -21,9 +21,9 @@ mental reconciliation of column mappings error-prone.
 infinite canvas**. You can place any number of heterogeneous tabular
 datasets side-by-side, zoom and pan freely across the workspace,
 visually connect columns across tables with interactive SVG splines,
-automatically detect categorical discrepancies, and generate idiomatic
-`tidyverse` code that pastes directly into your active RStudio script
-editor.
+sort and filter columns directly on table headers, automatically detect
+categorical discrepancies, and generate idiomatic `tidyverse` code that
+pastes directly into your active RStudio script editor.
 
 [`library`](https://rdrr.io/r/base/library.html)`(`[`sideview`](https://lauyeehow1986-hub.github.io/r_split/)`)`` `` ``# Launch side-by-side multi-table canvas in RStudio Viewer or Gadget Window`` `[`sideview`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview.md)`(``patients``, ``visits``, ``lab_results``, ``gt_summary``)`
 
@@ -36,13 +36,18 @@ editor.
 | **Workspace Layout** | Single-table tabbed view (one table at a time) | **Infinite 2D canvas** (unlimited tables side-by-side) |
 | **Navigation** | Basic paging | **Smooth mouse-wheel zoom (25%–250%) & canvas pan** |
 | **Table Alignment** | ❌ None | ✅ **Magnetic snap-to-edge docking** |
-| **Synchronized Scrolling** | ❌ None | ✅ **Locked synchronous vertical row scrolling** |
+| **Synchronized Scrolling** | ❌ None | ✅ **Dual vertical (`scrollTop`) and horizontal (`scrollLeft`) sync** |
 | **Multi-Format Ingestion** | `data.frame` only | ✅ **`data.frame`, `tibble`, `table`, `matrix`, `gt`, `flextable`, `htmlwidgets`** |
+| **Interactive Sorting** | ❌ None | ✅ **Tri-state header click (Asc / Desc / Reset) generating [`dplyr::arrange`](https://dplyr.tidyverse.org/reference/arrange.html)** |
+| **Interactive Filtering** | ❌ None | ✅ **Header filter popover (`>`, `<`, `==`, `contains`) generating [`dplyr::filter`](https://dplyr.tidyverse.org/reference/filter.html)** |
 | **Visual Column Mapping** | ❌ None | ✅ **Click-to-connect interactive SVG splines** |
+| **Spline Disconnection** | ❌ None | ✅ **Click or right-click directly on spline curves to disconnect** |
 | **Discrepancy Detection** | ❌ None | ✅ **Exact & fuzzy string matching with distance scoring** |
 | **Categorical Recoding** | ❌ None | ✅ **Automatic [`dplyr::case_match`](https://dplyr.tidyverse.org/reference/case_match.html) & [`forcats::fct_recode`](https://forcats.tidyverse.org/reference/fct_recode.html)** |
-| **Tidyverse Code Generation** | ❌ None | ✅ **`left_join`, `inner_join`, `mutate`, `rename`, `filter`** |
-| **AI / LLM Assistance** | ❌ None | ✅ **Local Ollama & Cloud OpenAI with privacy-safe schema** |
+| **Tidyverse Code Generation** | ❌ None | ✅ **`left_join`, `inner_join`, `mutate`, `rename`, `filter`, `arrange`** |
+| **Console & Script Execution** | ❌ None | ✅ **`Insert Script`, `Run & Exit`, `Run in R` (`.GlobalEnv`), and `Run Console`** |
+| **Pipeline Reset** | ❌ None | ✅ **Dedicated `Clear` button and `[✓] Auto-clear` toggle** |
+| **AI / LLM Assistance** | ❌ None | ✅ **Local Ollama (e.g. `gemma4:26b`, `llama3.2`) & Cloud OpenAI** |
 | **RStudio Script Insertion** | ❌ None | ✅ **Direct 1-click cursor paste via `rstudioapi`** |
 | **Standalone HTML Export** | ❌ None | ✅ **Self-contained `htmlwidget` ([`save_sideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/save_sideview.md))** |
 | **Quarto & Rmd Support** | ❌ None | ✅ **Embeddable via [`sideview_widget()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_widget.md)** |
@@ -70,10 +75,12 @@ flowchart TD
     subgraph Gadget ["Interactive Mode: sideview()"]
         CARDS --> GADGET["Shiny Gadget (Canvas + Panzoom)"]
         GADGET --> MAP["Interactive SVG Field Mapping"]
+        GADGET --> SORT["Header Sort & Filter Popovers"]
         GADGET --> DISC["Discrepancy & Recode Engine"]
         GADGET --> LLM["LLM Code Generator (Ollama / OpenAI)"]
         LLM --> RSTUDIO["rstudioapi: Insert to Active Script / Console"]
         MAP --> RSTUDIO
+        SORT --> RSTUDIO
         DISC --> RSTUDIO
     end
 
@@ -88,9 +95,12 @@ flowchart TD
     ([`sideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview.md))**:
     - Bi-directional reactive communication between the JavaScript
       Panzoom canvas and the R session.
-    - Live column mapping, discrepancy detection, and AI prompting.
+    - Live column mapping, interactive sorting, filter popovers,
+      discrepancy detection, and AI prompting.
     - Code delivery into the user’s active editor buffer via
-      [`rstudioapi::insertText()`](https://rstudio.github.io/rstudioapi/reference/rstudio-documents.html).
+      [`rstudioapi::insertText()`](https://rstudio.github.io/rstudioapi/reference/rstudio-documents.html),
+      execution in console upon exit via `stopApp()`, or immediate
+      evaluation in `.GlobalEnv`.
 2.  **Standalone HTML Widget Export
     ([`save_sideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/save_sideview.md))**:
     - Self-contained, zero-dependency HTML bundles embeddable in
@@ -105,14 +115,59 @@ flowchart TD
 
 - **Focal-point Zoom**: Smooth scaling from 25% to 250% centered on your
   mouse cursor.
-- **Canvas Panning**: Middle-click or canvas drag to traverse large
+- **Canvas Panning**: Drag canvas background to traverse large
   multi-table layouts.
 - **Snap-to-Edge Alignment**: Drag cards into alignment with magnetic
-  guides for side-by-side row inspection.
-- **Synchronized Row Scrolling**: Lock vertical scrolling between any
-  pair of tables to visually inspect matched records.
+  guidelines for side-by-side inspection.
+- **Dual Synchronized Scrolling**: Click the `[🔗]` link icon in card
+  headers to lock both vertical rows (`scrollTop`) and horizontal
+  columns (`scrollLeft`) in exact proportional lockstep across wide
+  tables.
 
-### 2. Universal Multi-Format Normalization
+### 2. Interactive Column Sorting & Filtering
+
+- **Click to Sort (`▲` / `▼` / `⇅`)**: Click the sort arrow in any
+  column header to toggle between Ascending, Descending, and Original
+  order. Rows reorder live on the canvas and
+  [`dplyr::arrange()`](https://dplyr.tidyverse.org/reference/arrange.html)
+  tidyverse code appears instantly in the Action Drawer.
+- **Floating Filter Popover (`🔍`)**: Click the filter magnifying glass
+  on any column to open a floating popover. Filter by numeric ranges
+  (`>`, `>=`, `<`, `<=`), exact matches (`==`, `!=`), or string matching
+  (`contains`). Non-matching rows are hidden live and
+  [`dplyr::filter()`](https://dplyr.tidyverse.org/reference/filter.html)
+  code is automatically synthesized.
+
+### 3. Click-to-Connect Field Mapping & Spline Disconnection
+
+- **Connect Columns**: Click a column port in Table A and a column port
+  in Table B to draw a cubic bezier curve between them and open the
+  **Action Drawer** with the corresponding
+  [`dplyr::left_join()`](https://dplyr.tidyverse.org/reference/mutate-joins.html)
+  or
+  [`dplyr::mutate()`](https://dplyr.tidyverse.org/reference/mutate.html)
+  pipeline.
+- **Disconnect Splines**: Hover over any spline curve (it turns red with
+  a glow indicator) and click it directly to remove the connection. You
+  can also right-click on any spline or column port to disconnect.
+
+### 4. Action Drawer Execution & Clearing
+
+The Action Drawer provides 4 dedicated execution actions plus clearing
+controls: - **`Insert Script`**: Pastes code directly into your active
+`.R` document at the cursor position (runs independently without
+interrupting the gadget). - **`Run & Exit`**: Sends code to the R
+console and immediately closes the gadget, triggering instant execution
+in RStudio. - **`Run in R`**: Evaluates code directly inside your
+current R session environment (`.GlobalEnv`) while keeping the canvas
+open, accompanied by a status toast showing output dimensions. -
+**`Run Console`**: Queues code into the RStudio console buffer (executes
+upon closing the gadget). - **`Clear` Button**: Instantly clears all
+connector splines, active filters, sort orders, and resets the code
+block. - **`[✓] Auto-clear` Toggle**: When enabled, automatically clears
+operations whenever you click `Insert Script` or `Copy`.
+
+### 5. Universal Multi-Format Normalization
 
 `sideview` seamlessly accepts heterogeneous R tabular structures in a
 single call: - **`data.frame` & `tibble`**: Virtualized interactive grid
@@ -123,20 +178,7 @@ the underlying data frame
 (`gt_tbl$`\_data`) for full code generation. - **`flextable`**: Rendered with full styling, retaining the underlying dataset for joins and mutations. - **`htmlwidgets`** (`DT`,`reactable\`,
 etc.): Visual embedded cards for side-by-side comparison.
 
-### 3. Click-to-Connect Field Mapping & Codegen
-
-- Click a column in Table A and a column in Table B to draw an
-  interactive SVG bezier spline between them.
-- Open the **Action Drawer** to immediately generate idiomatic R code:
-  - **Relational Joins**: `left_join`, `inner_join`, `full_join`,
-    `anti_join`.
-  - **Computed Mutations**: `mutate(new_col = expression)`.
-  - **Column Renames**: `rename(new_name = old_name)` with automatic
-    syntactic backtick escaping.
-  - **Filters & Selects**: Synthesize reproducible filtering and column
-    selection pipelines.
-
-### 4. Categorical Discrepancy Detection & Recoding
+### 6. Categorical Discrepancy Detection & Recoding
 
 - Cross-table discrepancy analysis
   ([`sv_detect_discrepancies()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_detect_discrepancies.md)):
@@ -153,28 +195,16 @@ etc.): Visual embedded cards for side-by-side comparison.
 
   `patients`` ``<-`` ``patients`` ``%>%`` `` ``dplyr``::`[`mutate`](https://dplyr.tidyverse.org/reference/mutate.html)`(``status ``=`` ``dplyr``::`[`case_match`](https://dplyr.tidyverse.org/reference/case_match.html)`(`` `` ``status_raw``,`` `` `[`c`](https://rdrr.io/r/base/c.html)`(``"Compl."``, ``"completed"``)`` ``~`` ``"Completed"``,`` `` ``"InProg"`` ``~`` ``"In Progress"``,`` `` .default ``=`` ``status_raw`` `` ``)``)`
 
-### 5. Dual LLM AI Code Assistant
+### 7. Dual LLM AI Code Assistant (Local Ollama & OpenAI)
 
 - **Local Ollama Integration**: Zero data leakage — connects to your
   local Ollama instance (`http://localhost:11434`) running models such
-  as `llama3.2`, `codellama`, or `deepseek-coder`.
+  as `gemma4:26b`, `llama3.2`, or `deepseek-coder`.
 - **Cloud OpenAI-Compatible Providers**: Works with OpenAI (`gpt-4o`,
   `gpt-4o-mini`), OpenRouter, Groq, LM Studio, or vLLM.
 - **Privacy-Safe Schema Context**: Prompts automatically synthesize
   column names, data types, and non-sensitive distributions *without*
   leaking confidential individual records.
-
-### 6. Zero-Click RStudio Integration
-
-- **Insert into Active Script**: Inserts generated tidyverse code right
-  at the cursor position in RStudio
-  ([`rstudioapi::insertText`](https://rstudio.github.io/rstudioapi/reference/rstudio-documents.html)).
-- **Send to Console**: Sends and optionally executes code immediately in
-  the R console
-  ([`rstudioapi::sendToConsole`](https://rstudio.github.io/rstudioapi/reference/sendToConsole.html)).
-- **Graceful Fallbacks**: When running outside of RStudio (e.g.,
-  terminal R, Jupyter, or VS Code), safely falls back to standard
-  console output or clipboard with informative notices.
 
 ------------------------------------------------------------------------
 
@@ -182,7 +212,7 @@ etc.): Visual embedded cards for side-by-side comparison.
 
 Install the development version of `sideview` from GitHub:
 
-`# install.packages("remotes")`` ``remotes``::`[`install_github`](https://remotes.r-lib.org/reference/install_github.html)`(``"sideview/sideview"``)`
+`# install.packages("remotes")`` ``remotes``::`[`install_github`](https://remotes.r-lib.org/reference/install_github.html)`(``"lauyeehow1986-hub/r_split"``)`
 
 ### Dependencies
 
@@ -223,38 +253,33 @@ sideview_widget(patients, visits, width = "100%", height = "650px")
 ```
 ````
 
-### 5. Using in Custom Shiny Applications
-
-[`library`](https://rdrr.io/r/base/library.html)`(`[`shiny`](https://shiny.posit.co/)`)`` `[`library`](https://rdrr.io/r/base/library.html)`(`[`sideview`](https://lauyeehow1986-hub.github.io/r_split/)`)`` `` ``ui`` ``<-`` `[`fluidPage`](https://rdrr.io/pkg/shiny/man/fluidPage.html)`(`` `` `[`titlePanel`](https://rdrr.io/pkg/shiny/man/titlePanel.html)`(``"Study Review Dashboard"``)``,`` `` `[`sideviewOutput`](https://lauyeehow1986-hub.github.io/r_split/reference/sideviewOutput.md)`(``"my_canvas"``, width ``=`` ``"100%"``, height ``=`` ``"750px"``)`` ``)`` `` ``server`` ``<-`` ``function``(``input``, ``output``, ``session``)`` ``{`` `` ``output``$``my_canvas`` ``<-`` `[`renderSideview`](https://lauyeehow1986-hub.github.io/r_split/reference/renderSideview.md)`(``{`` `` `[`sideview_widget`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_widget.md)`(``patients``, ``visits``)`` `` ``}``)`` ``}`` `` `[`shinyApp`](https://rdrr.io/pkg/shiny/man/shinyApp.html)`(``ui``, ``server``)`
-
 ------------------------------------------------------------------------
 
 ## LLM Configuration Guide
 
 `sideview` includes an AI prompt bar for natural-language data
-manipulation (e.g. *“Join patients and visits, recode gender, and
+manipulation (e.g. *“Join patients and visits on ID, recode gender, and
 calculate average BP for patients over 50”*).
 
 ### Option A: Local Ollama (Recommended — 100% Private, Zero Data Leakage)
 
-1.  Install and start [Ollama](https://ollama.ai/):
+1.  Start your local Ollama instance with your model (e.g. `gemma4:26b`
+    or `llama3.2`):
 
     ``` bash
-    ollama run llama3.2
+    ollama run gemma4:26b
     ```
 
-2.  By default, `sideview` connects to `http://localhost:11434` with
-    `llama3.2`.
+2.  Configure `sideview` in your R session before launching:
 
-3.  To customize default Ollama options in R:
+    [`options`](https://rdrr.io/r/base/options.html)`(`` `` sideview.llm_backend ``=`` ``"ollama"``,`` `` sideview.llm_model ``=`` ``"gemma4:26b"``,`` `` sideview.llm_endpoint ``=`` ``"http://localhost:11434"`` ``)`
 
-    [`options`](https://rdrr.io/r/base/options.html)`(`` `` sideview.llm_backend ``=`` ``"ollama"``,`` `` sideview.llm_model ``=`` ``"llama3.2"``,`` `` sideview.llm_endpoint ``=`` ``"http://localhost:11434"`` ``)`
+3.  Type your prompt in the floating AI bar and press Enter: \> *“Left
+    join patients with visits matching patient_id to subject_id”*
 
 ### Option B: Cloud OpenAI-Compatible Providers
 
-Set your API key as an environment variable or via options:
-
-`# In your ~/.Renviron file or R session:`` `[`Sys.setenv`](https://rdrr.io/r/base/Sys.setenv.html)`(``OPENAI_API_KEY ``=`` ``"sk-..."``)`` `` `[`options`](https://rdrr.io/r/base/options.html)`(`` `` sideview.llm_backend ``=`` ``"openai"``,`` `` sideview.llm_model ``=`` ``"gpt-4o-mini"``,`` `` sideview.llm_endpoint ``=`` ``"https://api.openai.com/v1"`` ``)`
+[`Sys.setenv`](https://rdrr.io/r/base/Sys.setenv.html)`(``OPENAI_API_KEY ``=`` ``"sk-..."``)`` `` `[`options`](https://rdrr.io/r/base/options.html)`(`` `` sideview.llm_backend ``=`` ``"openai"``,`` `` sideview.llm_model ``=`` ``"gpt-4o-mini"``,`` `` sideview.llm_endpoint ``=`` ``"https://api.openai.com/v1"`` ``)`
 
 Compatible with: - **OpenAI**: `https://api.openai.com/v1` -
 **OpenRouter**: `https://openrouter.ai/api/v1` - **Groq**:
@@ -272,13 +297,19 @@ Compatible with: - **OpenAI**: `https://api.openai.com/v1` -
 | **Reset View** | `Click "100%" in Toolbar` | Centers and resets zoom to 100% |
 | **Move Table Card** | `Drag Card Header` | Reposition card anywhere on canvas |
 | **Dock / Snap** | `Drag near card edge` | Snaps cards together with magnetic guidelines |
-| **Rename Column** | `Double-click column header` | Inline edit; generates [`dplyr::rename()`](https://dplyr.tidyverse.org/reference/rename.html) |
+| **Sort Column** | `Click "⇅" icon in column header` | Toggles Ascending (`▲`), Descending (`▼`), and Reset |
+| **Filter Column** | `Click "🔍" icon in column header` | Opens popover to filter rows; generates [`dplyr::filter()`](https://dplyr.tidyverse.org/reference/filter.html) |
+| **Rename Column** | `Double-click column name` | Inline edit; generates [`dplyr::rename()`](https://dplyr.tidyverse.org/reference/rename.html) |
 | **Color Highlight** | `Click Cell + Palette Swatch` | Annotate cells with custom highlighter colors |
-| **Synchronized Scroll** | `Click Link Icon (🔗)` on card header | Locks vertical scroll between adjacent tables |
+| **Synchronized Scroll** | `Click Link Icon (🔗)` on card header | Locks vertical rows and horizontal columns in lockstep |
 | **Connect Columns** | `Click Column A Port` then `Column B Port` | Draws SVG bezier spline and opens Codegen Drawer |
+| **Disconnect Spline** | `Click directly on spline curve` | Removes connection and re-evaluates pipeline code |
+| **Clear Operations** | `Click "Clear" in Action Drawer` | Resets all splines, active filters, and sort orders |
+| **Auto-Clear Toggle** | `Check [✓] Auto-clear in Drawer` | Automatically resets canvas when code is copied or inserted |
+| **Insert Code to Script** | `Click "Insert Script"` | Pastes generated R code at cursor via `rstudioapi` |
+| **Run & Exit** | `Click "Run & Exit"` | Sends code to console and closes gadget immediately |
+| **Run in R Session** | `Click "Run in R"` | Evaluates in `.GlobalEnv` with row/column toast notification |
 | **Submit AI Prompt** | `Click "Send" in AI Bar` | Sends natural language prompt to configured LLM |
-| **Insert Code to Script** | `Click "Insert to Script"` | Pastes generated R code at cursor via `rstudioapi` |
-| **Send to Console** | `Click "Run in Console"` | Sends generated code directly to active R console |
 
 ------------------------------------------------------------------------
 
@@ -295,9 +326,10 @@ Compatible with: - **OpenAI**: `https://api.openai.com/v1` -
 | `sv_normalize(x, name, id)` | Normalization | S3 generic converting tables to standardized cards |
 | `sv_find_tables(env)` | Discovery | Detect all tabular objects in an environment |
 | `sv_code_join(...)` | Code Generation | Emits [`dplyr::left_join`](https://dplyr.tidyverse.org/reference/mutate-joins.html), `inner_join`, `full_join`, `anti_join` |
+| `sv_code_arrange(...)` | Code Generation | Emits [`dplyr::arrange()`](https://dplyr.tidyverse.org/reference/arrange.html) with optional descending order |
+| `sv_code_filter(...)` | Code Generation | Emits [`dplyr::filter()`](https://dplyr.tidyverse.org/reference/filter.html) expressions |
 | `sv_code_rename(...)` | Code Generation | Emits [`dplyr::rename()`](https://dplyr.tidyverse.org/reference/rename.html) with non-syntactic backtick escaping |
 | `sv_code_mutate(...)` | Code Generation | Emits [`dplyr::mutate()`](https://dplyr.tidyverse.org/reference/mutate.html) expressions |
-| `sv_code_filter(...)` | Code Generation | Emits [`dplyr::filter()`](https://dplyr.tidyverse.org/reference/filter.html) expressions |
 | `sv_code_select(...)` | Code Generation | Emits [`dplyr::select()`](https://dplyr.tidyverse.org/reference/select.html) column selections |
 | `sv_detect_discrepancies(...)` | Discrepancies | Vectorized exact & fuzzy Levenshtein discrepancy detection |
 | `sv_code_recode(...)` | Discrepancies | Emits [`dplyr::case_match()`](https://dplyr.tidyverse.org/reference/case_match.html) or [`forcats::fct_recode()`](https://forcats.tidyverse.org/reference/fct_recode.html) |
@@ -308,22 +340,6 @@ Compatible with: - **OpenAI**: `https://api.openai.com/v1` -
 | [`sv_is_rstudio_available()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_is_rstudio_available.md) | RStudio Bridge | Checks if RStudio API is available |
 | `sv_insert_code(code)` | RStudio Bridge | Inserts text into active document editor |
 | `sv_send_to_console(code)` | RStudio Bridge | Sends code to R console for execution |
-
-------------------------------------------------------------------------
-
-## Development & Testing
-
-Run unit and integration tests using `testthat`:
-
-``` bash
-Rscript -e "testthat::test_dir('tests/testthat')"
-```
-
-Regenerate package documentation with `roxygen2`:
-
-``` bash
-Rscript -e "roxygen2::roxygenise()"
-```
 
 ------------------------------------------------------------------------
 

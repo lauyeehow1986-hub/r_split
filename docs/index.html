@@ -65,9 +65,9 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>When analyzing complex data workflows, data scientists frequently work with multiple related tables simultaneously: clinical demographics, longitudinal vitals, lab panels, crosswalk dictionaries, and summary reports.</p>
+<p>When analyzing complex workflows, data scientists frequently work with multiple related tables simultaneously: clinical demographics, longitudinal vitals, lab panels, crosswalk dictionaries, and summary reports.</p>
 <p>Existing tools force analysts into <strong>siloed, tabbed interfaces</strong> where only one table is visible at a time. Switching back and forth between tabs breaks cognitive flow, obscures structural discrepancies, and makes mental reconciliation of column mappings error-prone.</p>
-<p><strong><code>sideview</code></strong> replaces tabbed viewers with a hardware-accelerated <strong>2D infinite canvas</strong>. You can place any number of heterogeneous tabular datasets side-by-side, zoom and pan freely across the workspace, visually connect columns across tables with interactive SVG splines, automatically detect categorical discrepancies, and generate idiomatic <code>tidyverse</code> code that pastes directly into your active RStudio script editor.</p>
+<p><strong><code>sideview</code></strong> replaces tabbed viewers with a hardware-accelerated <strong>2D infinite canvas</strong>. You can place any number of heterogeneous tabular datasets side-by-side, zoom and pan freely across the workspace, visually connect columns across tables with interactive SVG splines, sort and filter columns directly on table headers, automatically detect categorical discrepancies, and generate idiomatic <code>tidyverse</code> code that pastes directly into your active RStudio script editor.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://lauyeehow1986-hub.github.io/r_split/">sideview</a></span><span class="op">)</span></span>
 <span></span>
@@ -111,7 +111,7 @@
 <tr>
 <td align="left"><strong>Synchronized Scrolling</strong></td>
 <td align="center">❌ None</td>
-<td align="center">✅ <strong>Locked synchronous vertical row scrolling</strong>
+<td align="center">✅ <strong>Dual vertical (<code>scrollTop</code>) and horizontal (<code>scrollLeft</code>) sync</strong>
 </td>
 </tr>
 <tr>
@@ -122,9 +122,27 @@
 </td>
 </tr>
 <tr>
+<td align="left"><strong>Interactive Sorting</strong></td>
+<td align="center">❌ None</td>
+<td align="center">✅ <strong>Tri-state header click (Asc / Desc / Reset) generating <code><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">dplyr::arrange</a></code></strong>
+</td>
+</tr>
+<tr>
+<td align="left"><strong>Interactive Filtering</strong></td>
+<td align="center">❌ None</td>
+<td align="center">✅ <strong>Header filter popover (<code>&gt;</code>, <code>&lt;</code>, <code>==</code>, <code>contains</code>) generating <code><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">dplyr::filter</a></code></strong>
+</td>
+</tr>
+<tr>
 <td align="left"><strong>Visual Column Mapping</strong></td>
 <td align="center">❌ None</td>
 <td align="center">✅ <strong>Click-to-connect interactive SVG splines</strong>
+</td>
+</tr>
+<tr>
+<td align="left"><strong>Spline Disconnection</strong></td>
+<td align="center">❌ None</td>
+<td align="center">✅ <strong>Click or right-click directly on spline curves to disconnect</strong>
 </td>
 </tr>
 <tr>
@@ -142,13 +160,25 @@
 <tr>
 <td align="left"><strong>Tidyverse Code Generation</strong></td>
 <td align="center">❌ None</td>
-<td align="center">✅ <strong><code>left_join</code>, <code>inner_join</code>, <code>mutate</code>, <code>rename</code>, <code>filter</code></strong>
+<td align="center">✅ <strong><code>left_join</code>, <code>inner_join</code>, <code>mutate</code>, <code>rename</code>, <code>filter</code>, <code>arrange</code></strong>
+</td>
+</tr>
+<tr>
+<td align="left"><strong>Console &amp; Script Execution</strong></td>
+<td align="center">❌ None</td>
+<td align="center">✅ <strong><code>Insert Script</code>, <code>Run &amp; Exit</code>, <code>Run in R</code> (<code>.GlobalEnv</code>), and <code>Run Console</code></strong>
+</td>
+</tr>
+<tr>
+<td align="left"><strong>Pipeline Reset</strong></td>
+<td align="center">❌ None</td>
+<td align="center">✅ <strong>Dedicated <code>Clear</code> button and <code>[✓] Auto-clear</code> toggle</strong>
 </td>
 </tr>
 <tr>
 <td align="left"><strong>AI / LLM Assistance</strong></td>
 <td align="center">❌ None</td>
-<td align="center">✅ <strong>Local Ollama &amp; Cloud OpenAI with privacy-safe schema</strong>
+<td align="center">✅ <strong>Local Ollama (e.g. <code>gemma4:26b</code>, <code>llama3.2</code>) &amp; Cloud OpenAI</strong>
 </td>
 </tr>
 <tr>
@@ -193,10 +223,12 @@
     subgraph Gadget ["Interactive Mode: sideview()"]
         CARDS --&gt; GADGET["Shiny Gadget (Canvas + Panzoom)"]
         GADGET --&gt; MAP["Interactive SVG Field Mapping"]
+        GADGET --&gt; SORT["Header Sort &amp; Filter Popovers"]
         GADGET --&gt; DISC["Discrepancy &amp; Recode Engine"]
         GADGET --&gt; LLM["LLM Code Generator (Ollama / OpenAI)"]
         LLM --&gt; RSTUDIO["rstudioapi: Insert to Active Script / Console"]
         MAP --&gt; RSTUDIO
+        SORT --&gt; RSTUDIO
         DISC --&gt; RSTUDIO
     end
 
@@ -210,8 +242,8 @@
 <strong>Interactive Shiny Gadget &amp; RStudio Addin (<code><a href="reference/sideview.html">sideview()</a></code>)</strong>:
 <ul>
 <li>Bi-directional reactive communication between the JavaScript Panzoom canvas and the R session.</li>
-<li>Live column mapping, discrepancy detection, and AI prompting.</li>
-<li>Code delivery into the user’s active editor buffer via <code><a href="https://rstudio.github.io/rstudioapi/reference/rstudio-documents.html" class="external-link">rstudioapi::insertText()</a></code>.</li>
+<li>Live column mapping, interactive sorting, filter popovers, discrepancy detection, and AI prompting.</li>
+<li>Code delivery into the user’s active editor buffer via <code><a href="https://rstudio.github.io/rstudioapi/reference/rstudio-documents.html" class="external-link">rstudioapi::insertText()</a></code>, execution in console upon exit via <code>stopApp()</code>, or immediate evaluation in <code>.GlobalEnv</code>.</li>
 </ul>
 </li>
 <li>
@@ -233,39 +265,45 @@
 <li>
 <strong>Focal-point Zoom</strong>: Smooth scaling from 25% to 250% centered on your mouse cursor.</li>
 <li>
-<strong>Canvas Panning</strong>: Middle-click or canvas drag to traverse large multi-table layouts.</li>
+<strong>Canvas Panning</strong>: Drag canvas background to traverse large multi-table layouts.</li>
 <li>
-<strong>Snap-to-Edge Alignment</strong>: Drag cards into alignment with magnetic guides for side-by-side row inspection.</li>
+<strong>Snap-to-Edge Alignment</strong>: Drag cards into alignment with magnetic guidelines for side-by-side inspection.</li>
 <li>
-<strong>Synchronized Row Scrolling</strong>: Lock vertical scrolling between any pair of tables to visually inspect matched records.</li>
+<strong>Dual Synchronized Scrolling</strong>: Click the <code>[🔗]</code> link icon in card headers to lock both vertical rows (<code>scrollTop</code>) and horizontal columns (<code>scrollLeft</code>) in exact proportional lockstep across wide tables.</li>
 </ul>
 </div>
 <div class="section level3">
-<h3 id="id_2-universal-multi-format-normalization">2. Universal Multi-Format Normalization<a class="anchor" aria-label="anchor" href="#id_2-universal-multi-format-normalization"></a>
+<h3 id="id_2-interactive-column-sorting--filtering">2. Interactive Column Sorting &amp; Filtering<a class="anchor" aria-label="anchor" href="#id_2-interactive-column-sorting--filtering"></a>
+</h3>
+<ul>
+<li>
+<strong>Click to Sort (<code>▲</code> / <code>▼</code> / <code>⇅</code>)</strong>: Click the sort arrow in any column header to toggle between Ascending, Descending, and Original order. Rows reorder live on the canvas and <code><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">dplyr::arrange()</a></code> tidyverse code appears instantly in the Action Drawer.</li>
+<li>
+<strong>Floating Filter Popover (<code>🔍</code>)</strong>: Click the filter magnifying glass on any column to open a floating popover. Filter by numeric ranges (<code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>, <code>&lt;=</code>), exact matches (<code>==</code>, <code>!=</code>), or string matching (<code>contains</code>). Non-matching rows are hidden live and <code><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">dplyr::filter()</a></code> code is automatically synthesized.</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="id_3-click-to-connect-field-mapping--spline-disconnection">3. Click-to-Connect Field Mapping &amp; Spline Disconnection<a class="anchor" aria-label="anchor" href="#id_3-click-to-connect-field-mapping--spline-disconnection"></a>
+</h3>
+<ul>
+<li>
+<strong>Connect Columns</strong>: Click a column port in Table A and a column port in Table B to draw a cubic bezier curve between them and open the <strong>Action Drawer</strong> with the corresponding <code><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">dplyr::left_join()</a></code> or <code><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">dplyr::mutate()</a></code> pipeline.</li>
+<li>
+<strong>Disconnect Splines</strong>: Hover over any spline curve (it turns red with a glow indicator) and click it directly to remove the connection. You can also right-click on any spline or column port to disconnect.</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="id_4-action-drawer-execution--clearing">4. Action Drawer Execution &amp; Clearing<a class="anchor" aria-label="anchor" href="#id_4-action-drawer-execution--clearing"></a>
+</h3>
+<p>The Action Drawer provides 4 dedicated execution actions plus clearing controls: - <strong><code>Insert Script</code></strong>: Pastes code directly into your active <code>.R</code> document at the cursor position (runs independently without interrupting the gadget). - <strong><code>Run &amp; Exit</code></strong>: Sends code to the R console and immediately closes the gadget, triggering instant execution in RStudio. - <strong><code>Run in R</code></strong>: Evaluates code directly inside your current R session environment (<code>.GlobalEnv</code>) while keeping the canvas open, accompanied by a status toast showing output dimensions. - <strong><code>Run Console</code></strong>: Queues code into the RStudio console buffer (executes upon closing the gadget). - <strong><code>Clear</code> Button</strong>: Instantly clears all connector splines, active filters, sort orders, and resets the code block. - <strong><code>[✓] Auto-clear</code> Toggle</strong>: When enabled, automatically clears operations whenever you click <code>Insert Script</code> or <code>Copy</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="id_5-universal-multi-format-normalization">5. Universal Multi-Format Normalization<a class="anchor" aria-label="anchor" href="#id_5-universal-multi-format-normalization"></a>
 </h3>
 <p><code>sideview</code> seamlessly accepts heterogeneous R tabular structures in a single call: - <strong><code>data.frame</code> &amp; <code>tibble</code></strong>: Virtualized interactive grid cards. - <strong><code><a href="https://rdrr.io/r/base/table.html" class="external-link">base::table</a></code> &amp; <code>matrix</code></strong>: Automatically converted to 2D frequency/matrix grid cards. - <strong><code>gt</code> &amp; <code>gtsummary</code></strong>: Rendered with raw HTML styling, while preserving the underlying data frame (<code>gt_tbl$</code>_data<code>) for full code generation. - **</code>flextable<code>**: Rendered with full styling, retaining the underlying dataset for joins and mutations. - **</code>htmlwidgets<code>** (</code>DT<code>,</code>reactable`, etc.): Visual embedded cards for side-by-side comparison.</p>
 </div>
 <div class="section level3">
-<h3 id="id_3-click-to-connect-field-mapping--codegen">3. Click-to-Connect Field Mapping &amp; Codegen<a class="anchor" aria-label="anchor" href="#id_3-click-to-connect-field-mapping--codegen"></a>
-</h3>
-<ul>
-<li>Click a column in Table A and a column in Table B to draw an interactive SVG bezier spline between them.</li>
-<li>Open the <strong>Action Drawer</strong> to immediately generate idiomatic R code:
-<ul>
-<li>
-<strong>Relational Joins</strong>: <code>left_join</code>, <code>inner_join</code>, <code>full_join</code>, <code>anti_join</code>.</li>
-<li>
-<strong>Computed Mutations</strong>: <code>mutate(new_col = expression)</code>.</li>
-<li>
-<strong>Column Renames</strong>: <code>rename(new_name = old_name)</code> with automatic syntactic backtick escaping.</li>
-<li>
-<strong>Filters &amp; Selects</strong>: Synthesize reproducible filtering and column selection pipelines.</li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="id_4-categorical-discrepancy-detection--recoding">4. Categorical Discrepancy Detection &amp; Recoding<a class="anchor" aria-label="anchor" href="#id_4-categorical-discrepancy-detection--recoding"></a>
+<h3 id="id_6-categorical-discrepancy-detection--recoding">6. Categorical Discrepancy Detection &amp; Recoding<a class="anchor" aria-label="anchor" href="#id_6-categorical-discrepancy-detection--recoding"></a>
 </h3>
 <ul>
 <li>
@@ -289,27 +327,15 @@
 </ul>
 </div>
 <div class="section level3">
-<h3 id="id_5-dual-llm-ai-code-assistant">5. Dual LLM AI Code Assistant<a class="anchor" aria-label="anchor" href="#id_5-dual-llm-ai-code-assistant"></a>
+<h3 id="id_7-dual-llm-ai-code-assistant-local-ollama--openai">7. Dual LLM AI Code Assistant (Local Ollama &amp; OpenAI)<a class="anchor" aria-label="anchor" href="#id_7-dual-llm-ai-code-assistant-local-ollama--openai"></a>
 </h3>
 <ul>
 <li>
-<strong>Local Ollama Integration</strong>: Zero data leakage — connects to your local Ollama instance (<code>http://localhost:11434</code>) running models such as <code>llama3.2</code>, <code>codellama</code>, or <code>deepseek-coder</code>.</li>
+<strong>Local Ollama Integration</strong>: Zero data leakage — connects to your local Ollama instance (<code>http://localhost:11434</code>) running models such as <code>gemma4:26b</code>, <code>llama3.2</code>, or <code>deepseek-coder</code>.</li>
 <li>
 <strong>Cloud OpenAI-Compatible Providers</strong>: Works with OpenAI (<code>gpt-4o</code>, <code>gpt-4o-mini</code>), OpenRouter, Groq, LM Studio, or vLLM.</li>
 <li>
 <strong>Privacy-Safe Schema Context</strong>: Prompts automatically synthesize column names, data types, and non-sensitive distributions <em>without</em> leaking confidential individual records.</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="id_6-zero-click-rstudio-integration">6. Zero-Click RStudio Integration<a class="anchor" aria-label="anchor" href="#id_6-zero-click-rstudio-integration"></a>
-</h3>
-<ul>
-<li>
-<strong>Insert into Active Script</strong>: Inserts generated tidyverse code right at the cursor position in RStudio (<code><a href="https://rstudio.github.io/rstudioapi/reference/rstudio-documents.html" class="external-link">rstudioapi::insertText</a></code>).</li>
-<li>
-<strong>Send to Console</strong>: Sends and optionally executes code immediately in the R console (<code><a href="https://rstudio.github.io/rstudioapi/reference/sendToConsole.html" class="external-link">rstudioapi::sendToConsole</a></code>).</li>
-<li>
-<strong>Graceful Fallbacks</strong>: When running outside of RStudio (e.g., terminal R, Jupyter, or VS Code), safely falls back to standard console output or clipboard with informative notices.</li>
 </ul>
 <hr>
 </div>
@@ -320,7 +346,7 @@
 <p>Install the development version of <code>sideview</code> from GitHub:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"sideview/sideview"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"lauyeehow1986-hub/r_split"</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="dependencies">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies"></a>
 </h3>
@@ -404,60 +430,38 @@
 <span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="in">library(sideview)</span></span>
 <span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="in">sideview_widget(patients, visits, width = "100%", height = "650px")</span></span>
 <span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="in">```</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="id_5-using-in-custom-shiny-applications">5. Using in Custom Shiny Applications<a class="anchor" aria-label="anchor" href="#id_5-using-in-custom-shiny-applications"></a>
-</h3>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://lauyeehow1986-hub.github.io/r_split/">sideview</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/titlePanel.html" class="external-link">titlePanel</a></span><span class="op">(</span><span class="st">"Study Review Dashboard"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="reference/sideviewOutput.html">sideviewOutput</a></span><span class="op">(</span><span class="st">"my_canvas"</span>, width <span class="op">=</span> <span class="st">"100%"</span>, height <span class="op">=</span> <span class="st">"750px"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">output</span><span class="op">$</span><span class="va">my_canvas</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/renderSideview.html">renderSideview</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="fu"><a href="reference/sideview_widget.html">sideview_widget</a></span><span class="op">(</span><span class="va">patients</span>, <span class="va">visits</span><span class="op">)</span></span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 </div>
 <div class="section level2">
 <h2 id="llm-configuration-guide">LLM Configuration Guide<a class="anchor" aria-label="anchor" href="#llm-configuration-guide"></a>
 </h2>
-<p><code>sideview</code> includes an AI prompt bar for natural-language data manipulation (e.g. <em>“Join patients and visits, recode gender, and calculate average BP for patients over 50”</em>).</p>
+<p><code>sideview</code> includes an AI prompt bar for natural-language data manipulation (e.g. <em>“Join patients and visits on ID, recode gender, and calculate average BP for patients over 50”</em>).</p>
 <div class="section level3">
 <h3 id="option-a-local-ollama-recommended--100-private-zero-data-leakage">Option A: Local Ollama (Recommended — 100% Private, Zero Data Leakage)<a class="anchor" aria-label="anchor" href="#option-a-local-ollama-recommended--100-private-zero-data-leakage"></a>
 </h3>
 <ol style="list-style-type: decimal">
 <li>
-<p>Install and start <a href="https://ollama.ai/" class="external-link">Ollama</a>:</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="ex">ollama</span> run llama3.2</span></code></pre></div>
+<p>Start your local Ollama instance with your model (e.g. <code>gemma4:26b</code> or <code>llama3.2</code>):</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="ex">ollama</span> run gemma4:26b</span></code></pre></div>
 </li>
-<li><p>By default, <code>sideview</code> connects to <code>http://localhost:11434</code> with <code>llama3.2</code>.</p></li>
 <li>
-<p>To customize default Ollama options in R:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<p>Configure <code>sideview</code> in your R session before launching:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span></span>
 <span>  sideview.llm_backend <span class="op">=</span> <span class="st">"ollama"</span>,</span>
-<span>  sideview.llm_model <span class="op">=</span> <span class="st">"llama3.2"</span>,</span>
+<span>  sideview.llm_model   <span class="op">=</span> <span class="st">"gemma4:26b"</span>,</span>
 <span>  sideview.llm_endpoint <span class="op">=</span> <span class="st">"http://localhost:11434"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </li>
+<li><p>Type your prompt in the floating AI bar and press Enter: &gt; <em>“Left join patients with visits matching patient_id to subject_id”</em></p></li>
 </ol>
 </div>
 <div class="section level3">
 <h3 id="option-b-cloud-openai-compatible-providers">Option B: Cloud OpenAI-Compatible Providers<a class="anchor" aria-label="anchor" href="#option-b-cloud-openai-compatible-providers"></a>
 </h3>
-<p>Set your API key as an environment variable or via options:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># In your ~/.Renviron file or R session:</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>OPENAI_API_KEY <span class="op">=</span> <span class="st">"sk-..."</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>OPENAI_API_KEY <span class="op">=</span> <span class="st">"sk-..."</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span></span>
 <span>  sideview.llm_backend <span class="op">=</span> <span class="st">"openai"</span>,</span>
@@ -510,8 +514,19 @@
 <td align="left">Snaps cards together with magnetic guidelines</td>
 </tr>
 <tr>
+<td align="left"><strong>Sort Column</strong></td>
+<td align="left"><code>Click "⇅" icon in column header</code></td>
+<td align="left">Toggles Ascending (<code>▲</code>), Descending (<code>▼</code>), and Reset</td>
+</tr>
+<tr>
+<td align="left"><strong>Filter Column</strong></td>
+<td align="left"><code>Click "🔍" icon in column header</code></td>
+<td align="left">Opens popover to filter rows; generates <code><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">dplyr::filter()</a></code>
+</td>
+</tr>
+<tr>
 <td align="left"><strong>Rename Column</strong></td>
-<td align="left"><code>Double-click column header</code></td>
+<td align="left"><code>Double-click column name</code></td>
 <td align="left">Inline edit; generates <code><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">dplyr::rename()</a></code>
 </td>
 </tr>
@@ -524,7 +539,7 @@
 <td align="left"><strong>Synchronized Scroll</strong></td>
 <td align="left">
 <code>Click Link Icon (🔗)</code> on card header</td>
-<td align="left">Locks vertical scroll between adjacent tables</td>
+<td align="left">Locks vertical rows and horizontal columns in lockstep</td>
 </tr>
 <tr>
 <td align="left"><strong>Connect Columns</strong></td>
@@ -534,20 +549,40 @@
 <td align="left">Draws SVG bezier spline and opens Codegen Drawer</td>
 </tr>
 <tr>
-<td align="left"><strong>Submit AI Prompt</strong></td>
-<td align="left"><code>Click "Send" in AI Bar</code></td>
-<td align="left">Sends natural language prompt to configured LLM</td>
+<td align="left"><strong>Disconnect Spline</strong></td>
+<td align="left"><code>Click directly on spline curve</code></td>
+<td align="left">Removes connection and re-evaluates pipeline code</td>
+</tr>
+<tr>
+<td align="left"><strong>Clear Operations</strong></td>
+<td align="left"><code>Click "Clear" in Action Drawer</code></td>
+<td align="left">Resets all splines, active filters, and sort orders</td>
+</tr>
+<tr>
+<td align="left"><strong>Auto-Clear Toggle</strong></td>
+<td align="left"><code>Check [✓] Auto-clear in Drawer</code></td>
+<td align="left">Automatically resets canvas when code is copied or inserted</td>
 </tr>
 <tr>
 <td align="left"><strong>Insert Code to Script</strong></td>
-<td align="left"><code>Click "Insert to Script"</code></td>
+<td align="left"><code>Click "Insert Script"</code></td>
 <td align="left">Pastes generated R code at cursor via <code>rstudioapi</code>
 </td>
 </tr>
 <tr>
-<td align="left"><strong>Send to Console</strong></td>
-<td align="left"><code>Click "Run in Console"</code></td>
-<td align="left">Sends generated code directly to active R console</td>
+<td align="left"><strong>Run &amp; Exit</strong></td>
+<td align="left"><code>Click "Run &amp; Exit"</code></td>
+<td align="left">Sends code to console and closes gadget immediately</td>
+</tr>
+<tr>
+<td align="left"><strong>Run in R Session</strong></td>
+<td align="left"><code>Click "Run in R"</code></td>
+<td align="left">Evaluates in <code>.GlobalEnv</code> with row/column toast notification</td>
+</tr>
+<tr>
+<td align="left"><strong>Submit AI Prompt</strong></td>
+<td align="left"><code>Click "Send" in AI Bar</code></td>
+<td align="left">Sends natural language prompt to configured LLM</td>
 </tr>
 </tbody>
 </table>
@@ -615,6 +650,16 @@
 </td>
 </tr>
 <tr>
+<td align="left"><code>sv_code_arrange(...)</code></td>
+<td align="left">Code Generation</td>
+<td align="left">Emits <code><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">dplyr::arrange()</a></code> with optional descending order</td>
+</tr>
+<tr>
+<td align="left"><code>sv_code_filter(...)</code></td>
+<td align="left">Code Generation</td>
+<td align="left">Emits <code><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">dplyr::filter()</a></code> expressions</td>
+</tr>
+<tr>
 <td align="left"><code>sv_code_rename(...)</code></td>
 <td align="left">Code Generation</td>
 <td align="left">Emits <code><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">dplyr::rename()</a></code> with non-syntactic backtick escaping</td>
@@ -623,11 +668,6 @@
 <td align="left"><code>sv_code_mutate(...)</code></td>
 <td align="left">Code Generation</td>
 <td align="left">Emits <code><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">dplyr::mutate()</a></code> expressions</td>
-</tr>
-<tr>
-<td align="left"><code>sv_code_filter(...)</code></td>
-<td align="left">Code Generation</td>
-<td align="left">Emits <code><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">dplyr::filter()</a></code> expressions</td>
 </tr>
 <tr>
 <td align="left"><code>sv_code_select(...)</code></td>
@@ -685,15 +725,6 @@
 <hr>
 </div>
 <div class="section level2">
-<h2 id="development--testing">Development &amp; Testing<a class="anchor" aria-label="anchor" href="#development--testing"></a>
-</h2>
-<p>Run unit and integration tests using <code>testthat</code>:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"testthat::test_dir('tests/testthat')"</span></span></code></pre></div>
-<p>Regenerate package documentation with <code>roxygen2</code>:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"roxygen2::roxygenise()"</span></span></code></pre></div>
-<hr>
-</div>
-<div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
 </h2>
 <p>This package is licensed under the <a href="LICENSE">MIT License</a>.</p>
@@ -740,7 +771,7 @@
 <div class="dev-status">
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/sideview/sideview" class="external-link"><img src="https://img.shields.io/badge/R--CMD--check-passing-brightgreen.svg" alt="R-CMD-check"></a></li>
+<li><a href="https://github.com/lauyeehow1986-hub/r_split" class="external-link"><img src="https://img.shields.io/badge/R--CMD--check-passing-brightgreen.svg" alt="R-CMD-check"></a></li>
 <li><a href="https://opensource.org/licenses/MIT" class="external-link"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a></li>
 <li><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>
 <li><a href="https://cran.r-project.org/" class="external-link"><img src="https://img.shields.io/badge/R-%3E=4.0.0-blue.svg" alt="R (&gt;= 4.0.0)"></a></li>
