@@ -7,7 +7,7 @@ Description: An interactive 2D infinite canvas for multi-table exploration,
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.3
 Imports:
     shiny,
     htmltools,
