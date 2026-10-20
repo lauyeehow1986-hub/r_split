@@ -262,6 +262,39 @@ test_that("sideview normalizes multiple table objects and sideview_addin finds d
   expect_s3_class(addin_app, "shiny.appobj")
   addin_cards <- attr(addin_app, "cards") %||% addin_app$cards
   expect_equal(length(addin_cards), 2)
+
+  # Test collision-free handling of datasets named 'title', 'viewer', 'run'
+  collision_env <- new.env(parent = emptyenv())
+  collision_env$title <- data.frame(id = 1:2)
+  collision_env$run <- data.frame(val = 3:4)
+  collision_app <- sideview_addin(env = collision_env, run = FALSE)
+  c_cards <- attr(collision_app, "cards") %||% collision_app$cards
+  expect_equal(length(c_cards), 2)
+  expect_true(all(c("title", "run") %in% vapply(c_cards, function(c) c$name, character(1))))
+})
+
+test_that("sideview_ui renders custom title and real htmlwidget objects", {
+  custom_ui <- sideview_ui(list(), title = "Clinical Trial 101")
+  ui_str <- as.character(custom_ui)
+  expect_true(grepl("Clinical Trial 101", ui_str))
+
+  # Real htmlwidget card
+  skip_if_not_installed("htmlwidgets")
+  widget <- htmlwidgets::createWidget("testWidget", list(x = 1), width = 200, height = 200)
+  card_w <- sv_normalize(widget, name = "my_w")
+  w_ui <- sideview_ui(card_w)
+  expect_true(grepl("testWidget", as.character(w_ui)))
+})
+
+test_that("sideview_server gracefully ignores incomplete discrepancy_check events", {
+  cards <- list(sv_normalize(data.frame(x = 1), name = "df"))
+  shiny::testServer(sideview_server(cards), {
+    # Incomplete inputs should not crash or throw errors
+    session$setInputs(discrepancy_check = list(table1 = "df"))
+    session$setInputs(discrepancy_check = list())
+    session$setInputs(discrepancy_check = NULL)
+    expect_true(TRUE)
+  })
 })
 
 test_that("inst/rstudio/addins.dcf exists and is a valid DCF file", {

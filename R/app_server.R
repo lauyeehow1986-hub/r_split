@@ -118,32 +118,39 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
     tbl2 <- evt$table2 %||% evt$to_table
     col2 <- evt$col2 %||% evt$to_col
 
-    # Resolve card data
-    c1 <- cards_by_name[[tbl1]] %||% cards_by_id[[tbl1]]
-    c2 <- cards_by_name[[tbl2]] %||% cards_by_id[[tbl2]]
+    if (is.null(tbl1) || is.null(tbl2) || is.null(col1) || is.null(col2) ||
+        !nzchar(tbl1) || !nzchar(tbl2) || !nzchar(col1) || !nzchar(col2)) return()
 
-    x_vec <- if (!is.null(c1) && !is.null(c1$data) && col1 %in% colnames(c1$data)) {
-      c1$data[[col1]]
-    } else {
-      NULL
-    }
-    y_vec <- if (!is.null(c2) && !is.null(c2$data) && col2 %in% colnames(c2$data)) {
-      c2$data[[col2]]
-    } else {
-      NULL
-    }
+    tryCatch({
+      # Resolve card data
+      c1 <- cards_by_name[[tbl1]] %||% cards_by_id[[tbl1]]
+      c2 <- cards_by_name[[tbl2]] %||% cards_by_id[[tbl2]]
 
-    disc <- sv_detect_discrepancies(x_vec, y_vec)
+      x_vec <- if (!is.null(c1) && !is.null(c1$data) && col1 %in% colnames(c1$data)) {
+        c1$data[[col1]]
+      } else {
+        NULL
+      }
+      y_vec <- if (!is.null(c2) && !is.null(c2$data) && col2 %in% colnames(c2$data)) {
+        c2$data[[col2]]
+      } else {
+        NULL
+      }
 
-    dispatch_message("sideview_discrepancies", list(
-      from_table = tbl1,
-      to_table = tbl2,
-      exact_matches = disc$exact_matches,
-      fuzzy_matches = disc$fuzzy_matches,
-      only_in_x = disc$only_in_x,
-      only_in_y = disc$only_in_y,
-      stats = disc$stats
-    ))
+      disc <- sv_detect_discrepancies(x_vec, y_vec)
+
+      dispatch_message("sideview_discrepancies", list(
+        from_table = tbl1,
+        to_table = tbl2,
+        exact_matches = disc$exact_matches,
+        fuzzy_matches = disc$fuzzy_matches,
+        only_in_x = disc$only_in_x,
+        only_in_y = disc$only_in_y,
+        stats = disc$stats
+      ))
+    }, error = function(e) {
+      message("sideview discrepancy analysis warning: ", conditionMessage(e))
+    })
   }, ignoreInit = FALSE)
 
   # 4. Run AI Prompt -> LLM Generation
@@ -156,7 +163,9 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
     backend <- evt$backend %||% "ollama"
 
     ai_code <- tryCatch({
-      llm_fn(prompt = prompt_obj, backend = backend)
+      raw_resp <- llm_fn(prompt = prompt_obj, backend = backend)
+      extracted <- sv_extract_code(raw_resp)
+      if (nzchar(extracted)) extracted else raw_resp
     }, error = function(e) {
       paste0("# AI generation failed: ", conditionMessage(e))
     })

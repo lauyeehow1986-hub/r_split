@@ -27,7 +27,6 @@ sideview_html_dependency <- function() {
   htmltools::htmlDependency(
     name = "sideview",
     version = "0.1.0",
-    package = "sideview",
     src = c(file = www_dir),
     stylesheet = "sideview.css",
     script = c("panzoom.min.js", "sideview.js")
@@ -130,6 +129,8 @@ render_card_tag <- function(card, index = 1L) {
       htmltools::tags$thead(htmltools::tags$tr(th_tags)),
       htmltools::tags$tbody(row_tags)
     )
+  } else if (!is.null(card$widget)) {
+    body_content <- htmltools::as.tags(card$widget)
   } else if (!is.null(card$html_content) && nzchar(card$html_content)) {
     body_content <- htmltools::HTML(card$html_content)
   } else {
@@ -160,10 +161,11 @@ render_card_tag <- function(card, index = 1L) {
 #'
 #' @param cards A `sideview_card` object, a list of `sideview_card` objects,
 #'   or tabular objects to be normalized.
+#' @param title Display title for the application toolbar. Default is "Sideview Canvas".
 #'
 #' @return A `shiny.tag.list` UI definition.
 #' @export
-sideview_ui <- function(cards = list()) {
+sideview_ui <- function(cards = list(), title = "Sideview Canvas") {
   # Normalize input into a list of sideview_cards
   if (is.null(cards)) {
     card_list <- list()
@@ -201,6 +203,8 @@ sideview_ui <- function(cards = list()) {
   # Toolbar
   toolbar_tag <- htmltools::tags$div(
     class = "sideview-toolbar",
+    htmltools::tags$span(class = "sideview-brand", title),
+    htmltools::tags$span(class = "sideview-toolbar-divider"),
     htmltools::tags$button(class = "sideview-btn", `data-action` = "zoom-in", title = "Zoom In", "+"),
     htmltools::tags$button(class = "sideview-btn", `data-action` = "zoom-out", title = "Zoom Out", "-"),
     htmltools::tags$button(class = "sideview-btn", `data-action` = "zoom-reset", title = "Reset View", "100%"),

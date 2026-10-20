@@ -98,7 +98,7 @@ sideview <- function(...,
   }
   
   # Build Shiny application object
-  ui <- sideview_ui(card_list)
+  ui <- sideview_ui(card_list, title = title)
   server <- sideview_server(card_list)
   app <- shiny::shinyApp(ui = ui, server = server)
   
@@ -138,6 +138,5 @@ sideview_addin <- function(env = .GlobalEnv,
     )
   }
   
-  args <- c(tables, list(viewer = viewer, run = run))
-  do.call(sideview, args)
+  sideview(tables, title = "Sideview Canvas", viewer = viewer, run = run)
 }
