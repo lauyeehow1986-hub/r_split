@@ -46,6 +46,8 @@
 <li>Shiny reactivity now dispatches <code>column_disconnected</code> to dynamically update code generation and downstream operations.</li>
 </ul></li>
 <li>
+<strong>Port State Reset &amp; Clearing</strong>: Enhanced <code>clearOperations()</code> to reliably purge active connecting port states (<code>this.activePort</code>) and strip visual <code>.connecting</code> classes when resetting the canvas.</li>
+<li>
 <strong>Table Card Snapping &amp; Dragging</strong>: Improved magnetic guideline alignment when dragging cards near each other.</li>
 <li>
 <strong>Syntax Validation Suite</strong>: Added automated Node.js syntax parsing in <code>tests/testthat/test-assets.R</code> to ensure zero runtime script syntax errors.</li>
@@ -65,10 +67,9 @@
 <li>Filters rows in real time and synthesizes <code><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">dplyr::filter()</a></code> pipelines.</li>
 </ul></li>
 <li>
-<strong>Tidyverse Code Generation Engine</strong>:
-<ul><li>Extended code generators with <code><a href="../reference/sv_code_arrange.html">sv_code_arrange()</a></code> and <code><a href="../reference/sv_code_filter.html">sv_code_filter()</a></code>.</li>
-<li>Improved non-syntactic column name escaping via <code><a href="../reference/sv_escape_ident.html">sv_escape_ident()</a></code>.</li>
-</ul></li>
+<strong>Non-Syntactic Identifier Escaping</strong>: Added client-side <code>escapeColIdentifier()</code> in <code>sideview.js</code> so column names with spaces or symbols (e.g. <code>Patient ID</code>, <code>Glucose (mg/dL)</code>) are safely wrapped in backticks across filter and arrange pipelines.</li>
+<li>
+<strong>List-Column &amp; Vector Safeguard</strong>: Hardened HTML grid table rendering in <code><a href="../reference/sideview_ui.html">sideview_ui()</a></code> to handle nested list-columns and vectors safely with a <code>[list]</code> placeholder, avoiding length &gt; 1 evaluation errors under R 4.2+.</li>
 </ul></div>
 <div class="section level4">
 <h4 id="action-drawer--workflow-controls-development-version">Action Drawer &amp; Workflow Controls<a class="anchor" aria-label="anchor" href="#action-drawer--workflow-controls-development-version"></a></h4>
@@ -97,6 +98,11 @@
 <strong>Cloud OpenAI-Compatible Support</strong>: Connect to OpenAI, OpenRouter, Groq, LM Studio, or vLLM.</li>
 <li>
 <strong>Privacy-Safe Schema Synthesis</strong>: Prompts contain table names, column types, and high-level distribution ranges without exposing confidential raw records.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="testing--verification-development-version">Testing &amp; Verification<a class="anchor" aria-label="anchor" href="#testing--verification-development-version"></a></h4>
+<ul><li>
+<strong>705 Automated Tests</strong>: Full test suite across 9 contexts with 100% pass rate covering universal normalization, codegen, LLM prompts, RStudio bridges, reactive gadget events, HTML widgets, and static asset syntax.</li>
 </ul><hr></div>
 </div>
 </div>

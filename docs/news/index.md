@@ -16,6 +16,9 @@
     immediately removes the connection.
   - Shiny reactivity now dispatches `column_disconnected` to dynamically
     update code generation and downstream operations.
+- **Port State Reset & Clearing**: Enhanced `clearOperations()` to
+  reliably purge active connecting port states (`this.activePort`) and
+  strip visual `.connecting` classes when resetting the canvas.
 - **Table Card Snapping & Dragging**: Improved magnetic guideline
   alignment when dragging cards near each other.
 - **Syntax Validation Suite**: Added automated Node.js syntax parsing in
@@ -38,13 +41,15 @@
   - Filters rows in real time and synthesizes
     [`dplyr::filter()`](https://dplyr.tidyverse.org/reference/filter.html)
     pipelines.
-- **Tidyverse Code Generation Engine**:
-  - Extended code generators with
-    [`sv_code_arrange()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_arrange.md)
-    and
-    [`sv_code_filter()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_filter.md).
-  - Improved non-syntactic column name escaping via
-    [`sv_escape_ident()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_escape_ident.md).
+- **Non-Syntactic Identifier Escaping**: Added client-side
+  `escapeColIdentifier()` in `sideview.js` so column names with spaces
+  or symbols (e.g. `Patient ID`, `Glucose (mg/dL)`) are safely wrapped
+  in backticks across filter and arrange pipelines.
+- **List-Column & Vector Safeguard**: Hardened HTML grid table rendering
+  in
+  [`sideview_ui()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_ui.md)
+  to handle nested list-columns and vectors safely with a `[list]`
+  placeholder, avoiding length \> 1 evaluation errors under R 4.2+.
 
 #### Action Drawer & Workflow Controls
 
@@ -73,6 +78,13 @@
 - **Privacy-Safe Schema Synthesis**: Prompts contain table names, column
   types, and high-level distribution ranges without exposing
   confidential raw records.
+
+#### Testing & Verification
+
+- **705 Automated Tests**: Full test suite across 9 contexts with 100%
+  pass rate covering universal normalization, codegen, LLM prompts,
+  RStudio bridges, reactive gadget events, HTML widgets, and static
+  asset syntax.
 
 ------------------------------------------------------------------------
 
