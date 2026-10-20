@@ -265,7 +265,14 @@ sideview_ui <- function(cards = list(), title = "Sideview Canvas") {
       htmltools::tags$button(class = "sideview-btn", `data-action` = "send-console-exit", title = "Send code to RStudio console and exit gadget to execute immediately", "Run & Exit"),
       htmltools::tags$button(class = "sideview-btn", `data-action` = "eval-env", title = "Execute code immediately in active R session environment", "Run in R"),
       htmltools::tags$button(class = "sideview-btn", `data-action` = "send-console", title = "Queue code to RStudio console (executes when gadget closes)", "Run Console"),
-      htmltools::tags$button(class = "sideview-btn", `data-action` = "copy-code", "Copy")
+      htmltools::tags$button(class = "sideview-btn", `data-action` = "copy-code", "Copy"),
+      htmltools::tags$button(class = "sideview-btn sideview-btn-danger", `data-action` = "clear-operation", title = "Clear current operations, connector lines, and generated code", "Clear"),
+      htmltools::tags$label(
+        class = "sideview-autoclear-wrap",
+        title = "Automatically clear operations after inserting into script or copying",
+        htmltools::tags$input(type = "checkbox", class = "sideview-autoclear-toggle"),
+        htmltools::tags$span("Auto-clear")
+      )
     )
   )
   

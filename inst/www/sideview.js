@@ -145,8 +145,12 @@
         '</div>',
         '<div class="sideview-drawer-actions">',
         '  <button class="sideview-btn sideview-btn-primary" data-action="inject-script" title="Insert code into active RStudio script">Insert Script</button>',
-        '  <button class="sideview-btn" data-action="send-console" title="Send code directly to RStudio console">Run Console</button>',
+        '  <button class="sideview-btn" data-action="send-console-exit" title="Send code to RStudio console and exit gadget to execute immediately">Run & Exit</button>',
+        '  <button class="sideview-btn" data-action="eval-env" title="Execute code immediately in active R session environment">Run in R</button>',
+        '  <button class="sideview-btn" data-action="send-console" title="Queue code to RStudio console (executes when gadget closes)">Run Console</button>',
         '  <button class="sideview-btn" data-action="copy-code">Copy</button>',
+        '  <button class="sideview-btn sideview-btn-danger" data-action="clear-operation" title="Clear current operations, connector lines, and generated code">Clear</button>',
+        '  <label class="sideview-autoclear-wrap" title="Automatically clear operations after inserting into script or copying"><input type="checkbox" class="sideview-autoclear-toggle" /> Auto-clear</label>',
         '</div>'
       ].join('');
       this.container.appendChild(drawer);
@@ -238,7 +242,12 @@
         if (dr) dr.classList.add('collapsed');
       } else if (action === 'inject-script') {
         sendToShiny('inject_script', { code: self.generatedCode });
-      } else if (action === 'send-console') {
+        if (self.shouldAutoClear()) {
+          self.clearOperations(true);
+          self.showToast('Code inserted into script and operations cleared!', 'success');
+        } else {
+          self.showToast('Code inserted into script! (Click Clear to reset)', 'success');
+        }
       } else if (action === 'send-console') {
         self.showToast('Queuing code to RStudio console...', 'warning');
         sendToShiny('send_console', { code: self.generatedCode });
@@ -253,7 +262,15 @@
           navigator.clipboard.writeText(self.generatedCode);
           btn.textContent = 'Copied!';
           setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+          if (self.shouldAutoClear()) {
+            self.clearOperations(true);
+            self.showToast('Code copied to clipboard and operations cleared!', 'success');
+          } else {
+            self.showToast('Code copied to clipboard! (Click Clear to reset)', 'info');
+          }
         }
+      } else if (action === 'clear-operation') {
+        self.clearOperations();
       }
     });
 
@@ -823,6 +840,62 @@
   /**
    * Display a status toast banner
    */
+  /**
+   * Check if auto-clear checkbox is checked
+   */
+  SideviewEngine.prototype.shouldAutoClear = function () {
+    var toggle = this.container.querySelector('.sideview-autoclear-toggle');
+    return toggle ? toggle.checked : false;
+  };
+
+  /**
+   * Clear all active operations, connector curves, port selections, and generated code
+   */
+  SideviewEngine.prototype.clearOperations = function (silent) {
+    var self = this;
+
+    // 1. Remove all SVG connector paths from the DOM
+    if (this.connections && this.connections.length > 0) {
+      this.connections.forEach(function (conn) {
+        if (conn.path && conn.path.parentNode) {
+          conn.path.parentNode.removeChild(conn.path);
+        }
+      });
+    }
+    this.connections = [];
+
+    if (this.svg) {
+      var extraPaths = this.svg.querySelectorAll('.sideview-connector-path');
+      extraPaths.forEach(function (p) { p.remove(); });
+    }
+
+    // 2. Clear port selections
+    if (this.selectedPort) {
+      this.selectedPort.classList.remove('active', 'selected', 'connecting');
+      this.selectedPort = null;
+    }
+    var activePorts = this.container.querySelectorAll('.sideview-col-port.active, .sideview-col-port.selected');
+    activePorts.forEach(function (p) { p.classList.remove('active', 'selected'); });
+
+    // 3. Clear discrepancy highlighting
+    var discCells = this.container.querySelectorAll('.sideview-discrepancy-fuzzy, .sideview-discrepancy-diff');
+    discCells.forEach(function (c) {
+      c.classList.remove('sideview-discrepancy-fuzzy', 'sideview-discrepancy-diff');
+    });
+
+    // 4. Reset generated code and drawer UI
+    this.generatedCode = '';
+    var codeText = this.container.querySelector('.sideview-code-text');
+    if (codeText) {
+      codeText.textContent = '# Connect two columns to generate pipeline code';
+    }
+
+    // 5. Notify user if not silent
+    if (!silent) {
+      this.showToast('Tidyverse operations and connectors cleared.', 'info');
+    }
+  };
+
   SideviewEngine.prototype.showToast = function (message, type) {
     var toast = document.createElement('div');
     toast.className = 'sideview-toast ' + (type ? 'sideview-toast-' + type : '');

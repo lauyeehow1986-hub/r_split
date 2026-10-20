@@ -712,3 +712,31 @@
 .sideview-toast-danger {
   border-left: 4px solid var(--sv-danger);
 }
+
+/* Danger / Clear Button */
+.sideview-btn-danger {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.sideview-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: #ef4444;
+}
+
+/* Auto-clear Checkbox */
+.sideview-autoclear-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--sv-text-muted);
+  cursor: pointer;
+  user-select: none;
+  margin-left: 6px;
+}
+
+.sideview-autoclear-toggle {
+  cursor: pointer;
+  accent-color: var(--sv-primary);
+}

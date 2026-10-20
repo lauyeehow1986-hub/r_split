@@ -107,6 +107,10 @@ test_that("sideview.js contains required functions, event handlers, and Shiny in
   # Shiny.setInputValue integration
   expect_match(js, "Shiny\\.setInputValue", 
                info = "sideview.js must integrate Shiny.setInputValue for event dispatch")
+
+  # Clear operations and reset functionality
+  expect_match(js, "clearOperations|clear-operation", 
+               info = "sideview.js must support clearing operations and resetting connectors")
 })
 
 test_that("panzoom.min.js contains a valid Panzoom library implementation", {
