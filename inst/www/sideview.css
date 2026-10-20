@@ -1,0 +1,674 @@
+/**
+ * sideview.css - Modern, responsive styling for Sideview 2D Infinite Canvas
+ * Multi-table exploration, interactive field mapping, and discrepancy analysis
+ */
+
+:root {
+  --sv-bg: #0f172a;
+  --sv-canvas-bg: #f8fafc;
+  --sv-canvas-grid-dot: #cbd5e1;
+  --sv-surface: #ffffff;
+  --sv-surface-secondary: #f1f5f9;
+  --sv-surface-tertiary: #e2e8f0;
+  --sv-border: #cbd5e1;
+  --sv-border-light: #e2e8f0;
+  --sv-border-focus: #3b82f6;
+  --sv-text: #0f172a;
+  --sv-text-muted: #64748b;
+  --sv-text-inverse: #ffffff;
+  --sv-primary: #2563eb;
+  --sv-primary-hover: #1d4ed8;
+  --sv-primary-subtle: #eff6ff;
+  --sv-accent: #8b5cf6;
+  --sv-success: #10b981;
+  --sv-warning: #f59e0b;
+  --sv-danger: #ef4444;
+  --sv-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sv-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --sv-radius-sm: 4px;
+  --sv-radius: 8px;
+  --sv-radius-lg: 12px;
+  --sv-shadow-card: 0 10px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+  --sv-shadow-card-drag: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  --sv-shadow-floating: 0 20px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+  --sv-transition: 150ms ease;
+  --sv-connector-color: #3b82f6;
+}
+
+/* Base sideview container */
+.sideview-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  overflow: hidden;
+  background-color: var(--sv-canvas-bg);
+  font-family: var(--sv-font);
+  color: var(--sv-text);
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.sideview-container * {
+  box-sizing: border-box;
+}
+
+/* Infinite Canvas & Panzoom Viewport */
+.sideview-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+  perspective: 1000px;
+  background-color: var(--sv-canvas-bg);
+  background-image: radial-gradient(var(--sv-canvas-grid-dot) 1px, transparent 1px);
+  background-size: 24px 24px;
+  touch-action: none;
+}
+
+.sideview-canvas:active {
+  cursor: grabbing;
+}
+
+.sideview-viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10000px;
+  height: 10000px;
+  transform-origin: 0 0;
+  pointer-events: auto;
+}
+
+/* Floating Toolbar */
+.sideview-toolbar {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--sv-border);
+  border-radius: var(--sv-radius-lg);
+  box-shadow: var(--sv-shadow-floating);
+}
+
+.sideview-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sv-text);
+  background: var(--sv-surface);
+  border: 1px solid var(--sv-border-light);
+  border-radius: var(--sv-radius-sm);
+  cursor: pointer;
+  transition: all var(--sv-transition);
+}
+
+.sideview-btn:hover {
+  background: var(--sv-surface-secondary);
+  border-color: var(--sv-border);
+}
+
+.sideview-btn.active {
+  background: var(--sv-primary-subtle);
+  color: var(--sv-primary);
+  border-color: var(--sv-primary);
+}
+
+.sideview-btn-primary {
+  background: var(--sv-primary);
+  color: var(--sv-text-inverse);
+  border-color: var(--sv-primary);
+}
+
+.sideview-btn-primary:hover {
+  background: var(--sv-primary-hover);
+  border-color: var(--sv-primary-hover);
+}
+
+.sideview-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--sv-border);
+  margin: 0 4px;
+}
+
+/* Draggable Table Card */
+.sideview-card {
+  position: absolute;
+  min-width: 320px;
+  max-width: 600px;
+  background: var(--sv-surface);
+  border: 1px solid var(--sv-border);
+  border-radius: var(--sv-radius);
+  box-shadow: var(--sv-shadow-card);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  cursor: default;
+  transition: box-shadow var(--sv-transition), border-color var(--sv-transition);
+}
+
+.sideview-card.is-dragging {
+  box-shadow: var(--sv-shadow-card-drag);
+  z-index: 50;
+  opacity: 0.96;
+}
+
+.sideview-card.is-selected {
+  border-color: var(--sv-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2), var(--sv-shadow-card);
+}
+
+/* Card Header */
+.sideview-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--sv-surface-secondary);
+  border-bottom: 1px solid var(--sv-border);
+  border-top-left-radius: var(--sv-radius);
+  border-top-right-radius: var(--sv-radius);
+  cursor: move;
+}
+
+.sideview-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.sideview-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sv-text);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.sideview-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  background: var(--sv-surface-tertiary);
+  color: var(--sv-text-muted);
+}
+
+.sideview-badge-type {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.sideview-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sideview-icon-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: var(--sv-radius-sm);
+  color: var(--sv-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.sideview-icon-btn:hover {
+  background: var(--sv-surface-tertiary);
+  color: var(--sv-text);
+}
+
+.sideview-icon-btn.active {
+  background: var(--sv-primary-subtle);
+  color: var(--sv-primary);
+}
+
+/* Card Body */
+.sideview-card-body {
+  position: relative;
+  overflow: auto;
+  max-height: 380px;
+  min-height: 140px;
+  background: var(--sv-surface);
+  border-bottom-left-radius: var(--sv-radius);
+  border-bottom-right-radius: var(--sv-radius);
+}
+
+/* Scrollable Table with Sticky Headers */
+.sideview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.sideview-table th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #f8fafc;
+  color: var(--sv-text);
+  font-weight: 600;
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--sv-border);
+  border-right: 1px solid var(--sv-border-light);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.sideview-table th .col-header-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.sideview-col-name {
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sideview-col-type {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--sv-text-muted);
+  font-family: var(--sv-font-mono);
+}
+
+/* Column Port for Click-to-Connect */
+.sideview-col-port {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--sv-border);
+  border: 2px solid #ffffff;
+  cursor: crosshair;
+  transition: transform 120ms ease, background-color 120ms ease;
+  flex-shrink: 0;
+}
+
+.sideview-col-port:hover,
+.sideview-col-port.connecting {
+  background: var(--sv-primary);
+  transform: scale(1.3);
+}
+
+.sideview-table td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--sv-border-light);
+  border-right: 1px solid var(--sv-border-light);
+  color: var(--sv-text);
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sideview-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+.sideview-table td.is-number {
+  font-family: var(--sv-font-mono);
+  text-align: right;
+}
+
+/* Cell Highlight Classes */
+.sideview-cell-highlight,
+.sv-highlight-blue {
+  background-color: rgba(59, 130, 246, 0.22) !important;
+}
+
+.sv-highlight-green {
+  background-color: rgba(16, 185, 129, 0.22) !important;
+}
+
+.sv-highlight-amber {
+  background-color: rgba(245, 158, 11, 0.22) !important;
+}
+
+.sv-highlight-rose {
+  background-color: rgba(239, 68, 68, 0.22) !important;
+}
+
+.sv-highlight-purple {
+  background-color: rgba(139, 92, 246, 0.22) !important;
+}
+
+.sideview-col-selected {
+  background-color: rgba(37, 99, 235, 0.08) !important;
+}
+
+/* Discrepancy Highlighting */
+.sideview-discrepancy-exact {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  border-left: 3px solid var(--sv-success) !important;
+}
+
+.sideview-discrepancy-fuzzy {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  border-left: 3px solid var(--sv-warning) !important;
+}
+
+.sideview-discrepancy-diff {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  border-left: 3px solid var(--sv-danger) !important;
+}
+
+/* Inline Column Renaming Input */
+.sideview-rename-input {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 4px;
+  border: 1px solid var(--sv-primary);
+  border-radius: var(--sv-radius-sm);
+  outline: none;
+  background: #ffffff;
+  color: var(--sv-text);
+  width: 100%;
+}
+
+/* SVG Connector Overlay */
+.sideview-connector-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 25;
+  overflow: visible;
+}
+
+.sideview-connector-path {
+  fill: none;
+  stroke: var(--sv-connector-color);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  pointer-events: stroke;
+  cursor: pointer;
+  transition: stroke 150ms ease, stroke-width 150ms ease;
+}
+
+.sideview-connector-path:hover {
+  stroke: var(--sv-primary-hover);
+  stroke-width: 5px;
+}
+
+.sideview-connector-path.active {
+  stroke-dasharray: 6 4;
+  animation: svDash 1s linear infinite;
+}
+
+@keyframes svDash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.sideview-connector-draft {
+  fill: none;
+  stroke: var(--sv-primary);
+  stroke-width: 2.5px;
+  stroke-dasharray: 4 4;
+  opacity: 0.85;
+}
+
+/* Color Highlighter Palette */
+.sideview-palette {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--sv-border);
+  border-radius: var(--sv-radius-lg);
+  box-shadow: var(--sv-shadow-floating);
+}
+
+.sideview-palette-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sv-text-muted);
+  margin-right: 4px;
+}
+
+.sideview-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px var(--sv-border);
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.sideview-swatch:hover {
+  transform: scale(1.2);
+}
+
+.sideview-swatch.active {
+  box-shadow: 0 0 0 2px var(--sv-primary);
+  transform: scale(1.15);
+}
+
+.sideview-swatch-blue { background: #3b82f6; }
+.sideview-swatch-green { background: #10b981; }
+.sideview-swatch-amber { background: #f59e0b; }
+.sideview-swatch-rose { background: #ef4444; }
+.sideview-swatch-purple { background: #8b5cf6; }
+.sideview-swatch-clear {
+  background: #f1f5f9;
+  position: relative;
+}
+.sideview-swatch-clear::after {
+  content: "×";
+  position: absolute;
+  top: -2px;
+  left: 5px;
+  color: var(--sv-text-muted);
+  font-size: 14px;
+}
+
+/* Action Drawer */
+.sideview-drawer {
+  position: absolute;
+  top: 70px;
+  right: 16px;
+  width: 360px;
+  max-height: calc(100% - 160px);
+  background: var(--sv-surface);
+  border: 1px solid var(--sv-border);
+  border-radius: var(--sv-radius-lg);
+  box-shadow: var(--sv-shadow-floating);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+
+.sideview-drawer.collapsed {
+  transform: translateX(380px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sideview-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--sv-surface-secondary);
+  border-bottom: 1px solid var(--sv-border);
+}
+
+.sideview-drawer-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sv-text);
+}
+
+.sideview-drawer-tabs {
+  display: flex;
+  background: var(--sv-surface-tertiary);
+  border-bottom: 1px solid var(--sv-border);
+  padding: 2px 4px 0 4px;
+  gap: 2px;
+}
+
+.sideview-drawer-tab {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--sv-text-muted);
+  cursor: pointer;
+  border-top-left-radius: var(--sv-radius-sm);
+  border-top-right-radius: var(--sv-radius-sm);
+}
+
+.sideview-drawer-tab.active {
+  background: var(--sv-surface);
+  color: var(--sv-primary);
+  font-weight: 600;
+}
+
+.sideview-drawer-content {
+  padding: 14px;
+  overflow-y: auto;
+  font-size: 13px;
+  flex: 1;
+}
+
+.sideview-code-block {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 10px 12px;
+  border-radius: var(--sv-radius);
+  font-family: var(--sv-font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  margin: 10px 0;
+}
+
+.sideview-drawer-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--sv-border);
+  background: var(--sv-surface-secondary);
+}
+
+/* Floating Natural Language AI Prompt Bar */
+.sideview-ai-bar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(90%, 640px);
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--sv-border);
+  border-radius: 9999px;
+  box-shadow: var(--sv-shadow-floating);
+  transition: all var(--sv-transition);
+}
+
+.sideview-ai-bar:focus-within {
+  border-color: var(--sv-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25), var(--sv-shadow-floating);
+}
+
+.sideview-ai-icon {
+  color: var(--sv-accent);
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sideview-ai-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--sv-text);
+  font-family: var(--sv-font);
+}
+
+.sideview-ai-input::placeholder {
+  color: var(--sv-text-muted);
+}
+
+.sideview-ai-send {
+  background: var(--sv-primary);
+  color: var(--sv-text-inverse);
+  border: none;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--sv-transition);
+  flex-shrink: 0;
+}
+
+.sideview-ai-send:hover {
+  background: var(--sv-primary-hover);
+}
+
+/* Snap Guide Indicator */
+.sideview-snap-guide {
+  position: absolute;
+  background-color: var(--sv-primary);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.sideview-snap-guide-h {
+  height: 1px;
+  left: 0;
+  right: 0;
+}
+
+.sideview-snap-guide-v {
+  width: 1px;
+  top: 0;
+  bottom: 0;
+}
