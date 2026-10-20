@@ -1,0 +1,8 @@
+export(sv_normalize)
+S3method(sv_normalize, data.frame)
+S3method(sv_normalize, table)
+S3method(sv_normalize, gt_tbl)
+S3method(sv_normalize, flextable)
+S3method(sv_normalize, htmlwidget)
+S3method(sv_normalize, default)
+S3method(print, sideview_card)
