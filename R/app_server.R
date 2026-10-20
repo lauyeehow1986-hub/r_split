@@ -89,7 +89,19 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
   shiny::observeEvent(input$column_disconnected, {
     evt <- input$column_disconnected
     if (is.null(evt)) return()
-    # Disconnected event logged / available in session
+    code <- if (!is.null(evt$code) && nzchar(evt$code)) {
+      evt$code
+    } else {
+      "# Connect two columns to generate pipeline code"
+    }
+    dispatch_message("sideview_code_update", list(code = code))
+  }, ignoreInit = FALSE)
+
+  # 1bb. Clear Operations -> Reset Event
+  shiny::observeEvent(input$clear_operations, {
+    evt <- input$clear_operations
+    if (is.null(evt)) return()
+    dispatch_message("sideview_code_update", list(code = "# Connect two columns to generate pipeline code"))
   }, ignoreInit = FALSE)
 
   # 1c. Column Sorted -> Arrange Code Generation

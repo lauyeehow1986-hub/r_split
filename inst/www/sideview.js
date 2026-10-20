@@ -926,7 +926,9 @@
       from_table: conn.fromTable,
       from_col: conn.fromCol,
       to_table: conn.toTable,
-      to_col: conn.toCol
+      to_col: conn.toCol,
+      remaining_count: this.connections.length,
+      code: this.generatedCode || '# Connect two columns to generate pipeline code'
     });
   };
 
@@ -1047,6 +1049,7 @@
     if (!silent) {
       this.showToast('Tidyverse operations and connectors cleared.', 'info');
     }
+    sendToShiny('clear_operations', { timestamp: Date.now() });
   };
 
   /**
