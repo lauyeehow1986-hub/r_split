@@ -20,19 +20,17 @@ sv_build_schema_context <- function(cards, max_categories = 5L) {
     return("")
   }
 
-  if (inherits(cards, "sideview_card") || is.data.frame(cards)) {
+  if (inherits(cards, "sideview_card") || is.data.frame(cards) ||
+      inherits(cards, c("gt_tbl", "flextable", "table")) || !is.list(cards)) {
     cards <- list(cards)
   }
 
   card_summaries <- character(0)
 
   for (card in cards) {
-    if (is.data.frame(card) && !inherits(card, "sideview_card")) {
-      card <- sv_normalize(card)
-    }
-
     if (!inherits(card, "sideview_card")) {
-      next
+      card <- tryCatch(sv_normalize(card), error = function(e) NULL)
+      if (is.null(card)) next
     }
 
     c_name <- card$name %||% "Table"
@@ -197,22 +195,34 @@ sv_extract_code <- function(response_text) {
 
   text <- paste(response_text, collapse = "\n")
 
-  # Regex pattern to match markdown code blocks
-  pattern <- "(?s)```(?:[rR]|\\{r\\})?\\s*\\r?\\n?(.*?)\\r?\\n?```"
-  matches <- gregexpr(pattern, text, perl = TRUE)
+  # First check for explicit R code fences: ```r, ```R, ```{r...}
+  r_pattern <- "(?s)```(?:[rR]|\\{r[^}]*\\})\\s*\\r?\\n(.*?)\\r?\\n?```"
+  r_matches <- gregexpr(r_pattern, text, perl = TRUE)
 
   extracted <- character(0)
-  reg_starts <- matches[[1]]
+  reg_starts <- r_matches[[1]]
 
   if (length(reg_starts) > 0L && reg_starts[1] != -1L) {
-    match_lens <- attr(matches[[1]], "match.length")
+    match_lens <- attr(r_matches[[1]], "match.length")
     for (i in seq_along(reg_starts)) {
       block_str <- substr(text, reg_starts[i], reg_starts[i] + match_lens[i] - 1L)
-      # Strip opening fence
-      inner <- sub("^```(?:[rR]|\\{r\\})?\\s*\\r?\\n?", "", block_str, perl = TRUE)
-      # Strip closing fence
+      inner <- sub("^```(?:[rR]|\\{r[^}]*\\})\\s*\\r?\\n", "", block_str, perl = TRUE)
       inner <- sub("\\r?\\n?```$", "", inner, perl = TRUE)
       extracted <- c(extracted, trimws(inner))
+    }
+  } else {
+    # Fallback to generic ``` code fence
+    gen_pattern <- "(?s)```(?:[a-zA-Z0-9_-]+)?\\s*\\r?\\n(.*?)\\r?\\n?```"
+    gen_matches <- gregexpr(gen_pattern, text, perl = TRUE)
+    reg_starts <- gen_matches[[1]]
+    if (length(reg_starts) > 0L && reg_starts[1] != -1L) {
+      match_lens <- attr(gen_matches[[1]], "match.length")
+      for (i in seq_along(reg_starts)) {
+        block_str <- substr(text, reg_starts[i], reg_starts[i] + match_lens[i] - 1L)
+        inner <- sub("^```(?:[a-zA-Z0-9_-]+)?\\s*\\r?\\n", "", block_str, perl = TRUE)
+        inner <- sub("\\r?\\n?```$", "", inner, perl = TRUE)
+        extracted <- c(extracted, trimws(inner))
+      }
     }
   }
 
@@ -266,15 +276,17 @@ sv_call_llm <- function(prompt,
   if (backend == "ollama") {
     endpoint <- endpoint %||% Sys.getenv("OLLAMA_HOST", "http://localhost:11434")
     model <- model %||% Sys.getenv("SIDEVIEW_OLLAMA_MODEL", "llama3.2")
-    if (!grepl("/api/(chat|generate)$", endpoint)) {
-      endpoint <- paste0(sub("/+$", "", endpoint), "/api/chat")
+    endpoint <- sub("/+$", "", endpoint)
+    if (!grepl("/api/chat$", endpoint)) {
+      endpoint <- paste0(endpoint, "/api/chat")
     }
   } else {
     endpoint <- endpoint %||% Sys.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     model <- model %||% Sys.getenv("SIDEVIEW_OPENAI_MODEL", "gpt-4o-mini")
     api_key <- api_key %||% Sys.getenv("OPENAI_API_KEY", "")
+    endpoint <- sub("/+$", "", endpoint)
     if (!grepl("/chat/completions$", endpoint)) {
-      endpoint <- paste0(sub("/+$", "", endpoint), "/chat/completions")
+      endpoint <- paste0(endpoint, "/chat/completions")
     }
   }
 
@@ -296,6 +308,14 @@ sv_call_llm <- function(prompt,
     payload$stream <- FALSE
   }
 
+  # Forward any additional kwargs (temperature, max_tokens, etc.)
+  extra_args <- list(...)
+  if (length(extra_args) > 0L) {
+    for (nm in names(extra_args)) {
+      if (nzchar(nm)) payload[[nm]] <- extra_args[[nm]]
+    }
+  }
+
   req <- httr2::request(endpoint)
   req <- httr2::req_method(req, "POST")
   req <- httr2::req_timeout(req, timeout)
@@ -307,37 +327,9 @@ sv_call_llm <- function(prompt,
 
   req <- httr2::req_body_json(req, payload)
 
-  # Execute request with error trapping
-  resp <- tryCatch(
-    httr2::req_perform(req),
-    error = function(e) {
-      if (inherits(e, "httr2_http")) {
-        err_resp <- e$resp
-        status <- httr2::resp_status(err_resp)
-        body_txt <- tryCatch(httr2::resp_body_string(err_resp), error = function(e2) "")
-        err_msg <- tryCatch({
-          err_json <- jsonlite::fromJSON(body_txt)
-          if (is.list(err_json$error) && !is.null(err_json$error$message)) {
-            err_json$error$message
-          } else if (is.character(err_json$error)) {
-            err_json$error
-          } else if (!is.null(err_json$message)) {
-            err_json$message
-          } else {
-            body_txt
-          }
-        }, error = function(e2) body_txt)
-        stop(sprintf("Sideview LLM API error (%d): %s", status, err_msg), call. = FALSE)
-      }
-      stop(sprintf("Sideview LLM connection failed (%s at %s): %s", backend, endpoint, e$message), call. = FALSE)
-    }
-  )
-
-  # Verify status
-  status <- httr2::resp_status(resp)
-  if (status >= 400L) {
-    body_txt <- tryCatch(httr2::resp_body_string(resp), error = function(e) "")
-    err_msg <- tryCatch({
+  extract_llm_error <- function(resp_obj) {
+    body_txt <- tryCatch(httr2::resp_body_string(resp_obj), error = function(e) "")
+    tryCatch({
       err_json <- jsonlite::fromJSON(body_txt)
       if (is.list(err_json$error) && !is.null(err_json$error$message)) {
         err_json$error$message
@@ -349,6 +341,26 @@ sv_call_llm <- function(prompt,
         body_txt
       }
     }, error = function(e) body_txt)
+  }
+
+  # Execute request with error trapping
+  resp <- tryCatch(
+    httr2::req_perform(req),
+    error = function(e) {
+      if (inherits(e, "httr2_http")) {
+        err_resp <- e$resp
+        status <- httr2::resp_status(err_resp)
+        err_msg <- extract_llm_error(err_resp)
+        stop(sprintf("Sideview LLM API error (%d): %s", status, err_msg), call. = FALSE)
+      }
+      stop(sprintf("Sideview LLM connection failed (%s at %s): %s", backend, endpoint, e$message), call. = FALSE)
+    }
+  )
+
+  # Verify status
+  status <- httr2::resp_status(resp)
+  if (status >= 400L) {
+    err_msg <- extract_llm_error(resp)
     stop(sprintf("Sideview LLM API error (%d): %s", status, err_msg), call. = FALSE)
   }
 

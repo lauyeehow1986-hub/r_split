@@ -14,6 +14,7 @@ Imports:
     htmlwidgets,
     dplyr,
     httr2,
+    jsonlite,
     rstudioapi
 Suggests:
     testthat (>= 3.0.0),

@@ -271,3 +271,53 @@ test_that("sv_call_llm handles API errors cleanly with informative messages", {
     )
   })
 })
+
+test_that("sv_call_llm and sv_extract_code handle trailing slashes and knitr options", {
+  # Knitr chunk options and multi-block language extraction
+  md_text <- paste(
+    "Here is the bash setup:",
+    "```bash",
+    "pip install pandas",
+    "```",
+    "Here is the tidyverse code:",
+    "```{r summary-chunk, eval=FALSE}",
+    "df |> mutate(z = x + y)",
+    "```",
+    sep = "\n"
+  )
+  extracted <- sv_extract_code(md_text)
+  expect_equal(extracted, "df |> mutate(z = x + y)")
+  expect_false(grepl("pip install", extracted))
+
+  # Trailing slash handling on base URL
+  captured_url <- NULL
+  mock_slash <- function(req) {
+    captured_url <<- req$url
+    httr2::response(
+      status_code = 200L,
+      headers = list("content-type" = "application/json"),
+      body = charToRaw('{"choices":[{"message":{"content":"ok"}}]}')
+    )
+  }
+
+  httr2::with_mocked_responses(mock_slash, {
+    sv_call_llm(
+      prompt = "hi",
+      backend = "openai",
+      endpoint = "https://api.openai.com/v1/chat/completions/"
+    )
+    expect_equal(captured_url, "https://api.openai.com/v1/chat/completions")
+
+    sv_call_llm(
+      prompt = "hi",
+      backend = "ollama",
+      endpoint = "http://localhost:11434/"
+    )
+    expect_equal(captured_url, "http://localhost:11434/api/chat")
+  })
+
+  # Single raw table into sv_build_schema_context
+  tbl <- table(c("A", "B", "A"))
+  schema <- sv_build_schema_context(tbl)
+  expect_true(grepl("Table", schema))
+})
