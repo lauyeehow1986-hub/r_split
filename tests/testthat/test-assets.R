@@ -125,6 +125,16 @@ test_that("sideview.js contains required functions, event handlers, and Shiny in
   # Interactive column sorting and filter popover
   expect_match(js, "sortColumn|column_sorted", info = "sideview.js must support column sorting")
   expect_match(js, "openFilterPopover|column_filtered", info = "sideview.js must support filter popover")
+
+  # Syntax validation via node if installed
+  node_path <- Sys.which("node")
+  if (nzchar(node_path)) {
+    js_path <- find_asset("sideview.js")
+    status <- system2(node_path, c("-c", shQuote(js_path)), stdout = TRUE, stderr = TRUE)
+    attr_status <- attr(status, "status")
+    expect_true(is.null(attr_status) || attr_status == 0,
+                info = paste("sideview.js syntax error:", paste(status, collapse = "\n")))
+  }
 })
 
 test_that("panzoom.min.js contains a valid Panzoom library implementation", {

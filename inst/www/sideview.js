@@ -909,8 +909,7 @@
     // Recompute code based on remaining connections
     if (this.connections.length > 0) {
       var lastConn = this.connections[this.connections.length - 1];
-      var joinCode = lastConn.fromTable + ' %>%
-  dplyr::left_join(' +
+      var joinCode = lastConn.fromTable + ' %>%\n  dplyr::left_join(' +
         lastConn.toTable + ', by = c("' + lastConn.fromCol + '" = "' + lastConn.toCol + '"))';
       this.updateDrawerCode(joinCode);
     } else {
@@ -1131,8 +1130,7 @@
 
       var cardName = cardEl.dataset.cardName || 'df';
       var arrangeArg = nextState === 'desc' ? 'dplyr::desc(' + colName + ')' : colName;
-      var arrangeCode = cardName + ' %>%
-  dplyr::arrange(' + arrangeArg + ')';
+      var arrangeCode = cardName + ' %>%\n  dplyr::arrange(' + arrangeArg + ')';
 
       self.activateDrawerTab('arrange');
       self.updateDrawerCode(arrangeCode);
@@ -1279,8 +1277,7 @@
         condExpr = colName + ' <= ' + val;
       }
 
-      var filterCode = cardName + ' %>%
-  dplyr::filter(' + condExpr + ')';
+      var filterCode = cardName + ' %>%\n  dplyr::filter(' + condExpr + ')';
       self.activateDrawerTab('filter');
       self.updateDrawerCode(filterCode);
       self.showToast('Filtered ' + colName + ' (' + matchedCount + '/' + rows.length + ' rows)', 'success');
