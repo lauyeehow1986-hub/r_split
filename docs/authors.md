@@ -11,11 +11,11 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/lauyeehow1986-hub/r_split/blob/HEAD/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/lauyeehow1986-hub/sideview/blob/HEAD/DESCRIPTION)
 
 Lau Y (2026). *sideview: Multi-Table 2D Infinite Canvas for R*. R
-package version 0.1.0, <https://lauyeehow1986-hub.github.io/r_split/>.
+package version 0.1.0, <https://lauyeehow1986-hub.github.io/sideview/>.
 
 @Manual{, title = {sideview: Multi-Table 2D Infinite Canvas for R},
 author = {Yee How Lau}, year = {2026}, note = {R package version 0.1.0},
-url = {https://lauyeehow1986-hub.github.io/r_split/}, }
+url = {https://lauyeehow1986-hub.github.io/sideview/}, }

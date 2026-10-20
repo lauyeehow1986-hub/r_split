@@ -7,8 +7,8 @@ Authors@R: c(
   )
 Description: An interactive 2D infinite canvas for multi-table exploration,
     interactive field mapping, and LLM-assisted tidyverse code generation.
-URL: https://lauyeehow1986-hub.github.io/r_split/, https://github.com/lauyeehow1986-hub/r_split
-BugReports: https://github.com/lauyeehow1986-hub/r_split/issues
+URL: https://lauyeehow1986-hub.github.io/sideview/, https://github.com/lauyeehow1986-hub/sideview
+BugReports: https://github.com/lauyeehow1986-hub/sideview/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

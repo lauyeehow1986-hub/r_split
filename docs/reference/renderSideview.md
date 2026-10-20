@@ -13,7 +13,7 @@ renderSideview(expr, env = parent.frame(), quoted = FALSE)
 - expr:
 
   An expression that generates a
-  [`sideview_widget`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_widget.md).
+  [`sideview_widget`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_widget.md).
 
 - env:
 

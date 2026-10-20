@@ -4,7 +4,7 @@ Normalizes passed table objects (`data.frame`, `tibble`, `table`, `gt`,
 `flextable`, `htmlwidgets`) and creates an interactive 2D infinite
 canvas `htmlwidget` suitable for rendering in R Markdown, Quarto, Shiny,
 or exporting via
-[`save_sideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/save_sideview.md).
+[`save_sideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/save_sideview.md).
 
 ## Usage
 

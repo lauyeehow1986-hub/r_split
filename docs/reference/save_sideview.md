@@ -22,7 +22,7 @@ save_sideview(
 
   A `sideview` htmlwidget object, or tabular data objects that can be
   converted to one via
-  [`sideview_widget`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_widget.md).
+  [`sideview_widget`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_widget.md).
 
 - file:
 

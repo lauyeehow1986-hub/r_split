@@ -1,7 +1,7 @@
 # sideview <img src="man/figures/logo.png" align="right" height="139" alt="sideview logo" />
 
 <!-- badges: start -->
-[![R-CMD-check](https://img.shields.io/badge/R--CMD--check-passing-brightgreen.svg)](https://github.com/lauyeehow1986-hub/r_split)
+[![R-CMD-check](https://img.shields.io/badge/R--CMD--check-passing-brightgreen.svg)](https://github.com/lauyeehow1986-hub/sideview)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![R (>= 4.0.0)](https://img.shields.io/badge/R->=4.0.0-blue.svg)](https://cran.r-project.org/)
@@ -161,7 +161,7 @@ Install the development version of `sideview` from GitHub:
 
 ```r
 # install.packages("remotes")
-remotes::install_github("lauyeehow1986-hub/r_split")
+remotes::install_github("lauyeehow1986-hub/sideview")
 ```
 
 ### Dependencies

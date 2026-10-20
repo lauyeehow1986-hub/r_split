@@ -18,7 +18,7 @@
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="sideview: Multi-Table 2D Infinite Canvas for R">
 <meta name="description" content="Explore multiple tables simultaneously on an infinite 2D canvas with mouse-wheel zoom, visual field mapping, and LLM-assisted tidyverse code generation.">
 <meta property="og:description" content="Explore multiple tables simultaneously on an infinite 2D canvas with mouse-wheel zoom, visual field mapping, and LLM-assisted tidyverse code generation.">
-<meta property="og:image" content="https://lauyeehow1986-hub.github.io/r_split/logo.svg">
+<meta property="og:image" content="https://lauyeehow1986-hub.github.io/sideview/logo.svg">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -44,7 +44,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/lauyeehow1986-hub/r_split" aria-label="GitHub repository"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/lauyeehow1986-hub/sideview" aria-label="GitHub repository"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -70,7 +70,7 @@
 <p>Existing tools force analysts into <strong>siloed, tabbed interfaces</strong> where only one table is visible at a time. Switching back and forth between tabs breaks cognitive flow, obscures structural discrepancies, and makes mental reconciliation of column mappings error-prone.</p>
 <p><strong><code>sideview</code></strong> replaces tabbed viewers with a hardware-accelerated <strong>2D infinite canvas</strong>. You can place any number of heterogeneous tabular datasets side-by-side, zoom and pan freely across the workspace, visually connect columns across tables with interactive SVG splines, sort and filter columns directly on table headers, automatically detect categorical discrepancies, and generate idiomatic <code>tidyverse</code> code that pastes directly into your active RStudio script editor.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://lauyeehow1986-hub.github.io/r_split/">sideview</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://lauyeehow1986-hub.github.io/sideview/">sideview</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Launch side-by-side multi-table canvas in RStudio Viewer or Gadget Window</span></span>
 <span><span class="fu"><a href="reference/sideview.html">sideview</a></span><span class="op">(</span><span class="va">patients</span>, <span class="va">visits</span>, <span class="va">lab_results</span>, <span class="va">gt_summary</span><span class="op">)</span></span></code></pre></div>
@@ -347,7 +347,7 @@
 <p>Install the development version of <code>sideview</code> from GitHub:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"lauyeehow1986-hub/r_split"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"lauyeehow1986-hub/sideview"</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="dependencies">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies"></a>
 </h3>
@@ -369,7 +369,7 @@
 <h3 id="id_1-launch-interactive-gadget-with-heterogeneous-tables">1. Launch Interactive Gadget with Heterogeneous Tables<a class="anchor" aria-label="anchor" href="#id_1-launch-interactive-gadget-with-heterogeneous-tables"></a>
 </h3>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://lauyeehow1986-hub.github.io/r_split/">sideview</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://lauyeehow1986-hub.github.io/sideview/">sideview</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Standard data frame</span></span>
@@ -740,8 +740,8 @@
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/lauyeehow1986-hub/r_split/" class="external-link">Browse source code</a></li>
-<li><a href="https://github.com/lauyeehow1986-hub/r_split/issues" class="external-link">Report a bug</a></li>
+<li><a href="https://github.com/lauyeehow1986-hub/sideview/" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/lauyeehow1986-hub/sideview/issues" class="external-link">Report a bug</a></li>
 </ul>
 </div>
 
@@ -774,7 +774,7 @@
 <div class="dev-status">
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/lauyeehow1986-hub/r_split" class="external-link"><img src="https://img.shields.io/badge/R--CMD--check-passing-brightgreen.svg" alt="R-CMD-check"></a></li>
+<li><a href="https://github.com/lauyeehow1986-hub/sideview" class="external-link"><img src="https://img.shields.io/badge/R--CMD--check-passing-brightgreen.svg" alt="R-CMD-check"></a></li>
 <li><a href="https://opensource.org/licenses/MIT" class="external-link"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a></li>
 <li><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>
 <li><a href="https://cran.r-project.org/" class="external-link"><img src="https://img.shields.io/badge/R-%3E=4.0.0-blue.svg" alt="R (&gt;= 4.0.0)"></a></li>

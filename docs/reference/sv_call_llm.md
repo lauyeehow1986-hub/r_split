@@ -49,7 +49,7 @@ sv_call_llm(
 - extract_code:
 
   Logical; if TRUE, runs
-  [`sv_extract_code()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_extract_code.md)
+  [`sv_extract_code()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_extract_code.md)
   on the response text. Default FALSE.
 
 - ...:

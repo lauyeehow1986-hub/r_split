@@ -25,7 +25,7 @@ sort and filter columns directly on table headers, automatically detect
 categorical discrepancies, and generate idiomatic `tidyverse` code that
 pastes directly into your active RStudio script editor.
 
-[`library`](https://rdrr.io/r/base/library.html)`(`[`sideview`](https://lauyeehow1986-hub.github.io/r_split/)`)`` `` ``# Launch side-by-side multi-table canvas in RStudio Viewer or Gadget Window`` `[`sideview`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview.md)`(``patients``, ``visits``, ``lab_results``, ``gt_summary``)`
+[`library`](https://rdrr.io/r/base/library.html)`(`[`sideview`](https://lauyeehow1986-hub.github.io/sideview/)`)`` `` ``# Launch side-by-side multi-table canvas in RStudio Viewer or Gadget Window`` `[`sideview`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview.md)`(``patients``, ``visits``, ``lab_results``, ``gt_summary``)`
 
 ------------------------------------------------------------------------
 
@@ -49,8 +49,8 @@ pastes directly into your active RStudio script editor.
 | **Pipeline Reset** | ❌ None | ✅ **Dedicated `Clear` button and `[✓] Auto-clear` toggle** |
 | **AI / LLM Assistance** | ❌ None | ✅ **Local Ollama (e.g. `gemma4:26b`, `llama3.2`) & Cloud OpenAI** |
 | **RStudio Script Insertion** | ❌ None | ✅ **Direct 1-click cursor paste via `rstudioapi`** |
-| **Standalone HTML Export** | ❌ None | ✅ **Self-contained `htmlwidget` ([`save_sideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/save_sideview.md))** |
-| **Quarto & Rmd Support** | ❌ None | ✅ **Embeddable via [`sideview_widget()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_widget.md)** |
+| **Standalone HTML Export** | ❌ None | ✅ **Self-contained `htmlwidget` ([`save_sideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/save_sideview.md))** |
+| **Quarto & Rmd Support** | ❌ None | ✅ **Embeddable via [`sideview_widget()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_widget.md)** |
 
 ------------------------------------------------------------------------
 
@@ -92,7 +92,7 @@ flowchart TD
 ```
 
 1.  **Interactive Shiny Gadget & RStudio Addin
-    ([`sideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview.md))**:
+    ([`sideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview.md))**:
     - Bi-directional reactive communication between the JavaScript
       Panzoom canvas and the R session.
     - Live column mapping, interactive sorting, filter popovers,
@@ -102,7 +102,7 @@ flowchart TD
       execution in console upon exit via `stopApp()`, or immediate
       evaluation in `.GlobalEnv`.
 2.  **Standalone HTML Widget Export
-    ([`save_sideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/save_sideview.md))**:
+    ([`save_sideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/save_sideview.md))**:
     - Self-contained, zero-dependency HTML bundles embeddable in
       reports, Quarto presentations, or shared offline with
       stakeholders.
@@ -181,7 +181,7 @@ etc.): Visual embedded cards for side-by-side comparison.
 ### 6. Categorical Discrepancy Detection & Recoding
 
 - Cross-table discrepancy analysis
-  ([`sv_detect_discrepancies()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_detect_discrepancies.md)):
+  ([`sv_detect_discrepancies()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_detect_discrepancies.md)):
 
   - Identifies exact matches, unique categories in Table A, and unique
     categories in Table B.
@@ -212,7 +212,7 @@ etc.): Visual embedded cards for side-by-side comparison.
 
 Install the development version of `sideview` from GitHub:
 
-`# install.packages("remotes")`` ``remotes``::`[`install_github`](https://remotes.r-lib.org/reference/install_github.html)`(``"lauyeehow1986-hub/r_split"``)`
+`# install.packages("remotes")`` ``remotes``::`[`install_github`](https://remotes.r-lib.org/reference/install_github.html)`(``"lauyeehow1986-hub/sideview"``)`
 
 ### Dependencies
 
@@ -226,18 +226,18 @@ Install the development version of `sideview` from GitHub:
 
 ### 1. Launch Interactive Gadget with Heterogeneous Tables
 
-[`library`](https://rdrr.io/r/base/library.html)`(`[`sideview`](https://lauyeehow1986-hub.github.io/r_split/)`)`` `[`library`](https://rdrr.io/r/base/library.html)`(`[`dplyr`](https://dplyr.tidyverse.org)`)`` `` ``# Standard data frame`` ``patients`` ``<-`` `[`data.frame`](https://rdrr.io/r/base/data.frame.html)`(`` `` patient_id ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"P01"``, ``"P02"``, ``"P03"``, ``"P04"``)``,`` `` age ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``45``, ``52``, ``38``, ``61``)``,`` `` gender_raw ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"Male"``, ``"Female"``, ``"M"``, ``"Fem"``)``,`` `` stringsAsFactors ``=`` ``FALSE`` ``)`` `` ``# Tibble`` ``visits`` ``<-`` `[`tibble`](https://tibble.tidyverse.org/reference/tibble.html)`(`` `` subject_id ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"P01"``, ``"P02"``, ``"P03"``, ``"P05"``)``,`` `` systolic_bp ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``120``, ``140``, ``115``, ``130``)``,`` `` visit_date ``=`` `[`as.Date`](https://rdrr.io/r/base/as.Date.html)`(`[`c`](https://rdrr.io/r/base/c.html)`(``"2024-01-10"``, ``"2024-01-15"``, ``"2024-02-01"``, ``"2024-02-10"``)``)`` ``)`` `` ``# Base R contingency table`` ``dx_freq`` ``<-`` `[`table`](https://rdrr.io/r/base/table.html)`(`[`c`](https://rdrr.io/r/base/c.html)`(``"Hypertension"``, ``"Diabetes"``, ``"Hypertension"``, ``"Asthma"``)``)`` `` ``# Launch Sideview canvas`` `[`sideview`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview.md)`(``patients``, ``visits``, diagnoses ``=`` ``dx_freq``)`
+[`library`](https://rdrr.io/r/base/library.html)`(`[`sideview`](https://lauyeehow1986-hub.github.io/sideview/)`)`` `[`library`](https://rdrr.io/r/base/library.html)`(`[`dplyr`](https://dplyr.tidyverse.org)`)`` `` ``# Standard data frame`` ``patients`` ``<-`` `[`data.frame`](https://rdrr.io/r/base/data.frame.html)`(`` `` patient_id ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"P01"``, ``"P02"``, ``"P03"``, ``"P04"``)``,`` `` age ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``45``, ``52``, ``38``, ``61``)``,`` `` gender_raw ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"Male"``, ``"Female"``, ``"M"``, ``"Fem"``)``,`` `` stringsAsFactors ``=`` ``FALSE`` ``)`` `` ``# Tibble`` ``visits`` ``<-`` `[`tibble`](https://tibble.tidyverse.org/reference/tibble.html)`(`` `` subject_id ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"P01"``, ``"P02"``, ``"P03"``, ``"P05"``)``,`` `` systolic_bp ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``120``, ``140``, ``115``, ``130``)``,`` `` visit_date ``=`` `[`as.Date`](https://rdrr.io/r/base/as.Date.html)`(`[`c`](https://rdrr.io/r/base/c.html)`(``"2024-01-10"``, ``"2024-01-15"``, ``"2024-02-01"``, ``"2024-02-10"``)``)`` ``)`` `` ``# Base R contingency table`` ``dx_freq`` ``<-`` `[`table`](https://rdrr.io/r/base/table.html)`(`[`c`](https://rdrr.io/r/base/c.html)`(``"Hypertension"``, ``"Diabetes"``, ``"Hypertension"``, ``"Asthma"``)``)`` `` ``# Launch Sideview canvas`` `[`sideview`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview.md)`(``patients``, ``visits``, diagnoses ``=`` ``dx_freq``)`
 
 ### 2. Including `gt` and `flextable` Objects
 
-[`library`](https://rdrr.io/r/base/library.html)`(`[`gt`](https://gt.rstudio.com)`)`` `[`library`](https://rdrr.io/r/base/library.html)`(`[`flextable`](https://ardata-fr.github.io/flextable-book/)`)`` `` ``gt_summary`` ``<-`` `[`gt`](https://gt.rstudio.com/reference/gt.html)`(``patients``[``, `[`c`](https://rdrr.io/r/base/c.html)`(``"patient_id"``, ``"age"``)``]``)`` ``flex_visits`` ``<-`` `[`flextable`](https://davidgohel.github.io/flextable/reference/flextable.html)`(`[`as.data.frame`](https://rdrr.io/r/base/as.data.frame.html)`(``visits``)``)`` `` ``# Both stylized HTML tables and raw data grids are accessible on the canvas`` `[`sideview`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview.md)`(``patients``, ``visits``, ``gt_summary``, ``flex_visits``)`
+[`library`](https://rdrr.io/r/base/library.html)`(`[`gt`](https://gt.rstudio.com)`)`` `[`library`](https://rdrr.io/r/base/library.html)`(`[`flextable`](https://ardata-fr.github.io/flextable-book/)`)`` `` ``gt_summary`` ``<-`` `[`gt`](https://gt.rstudio.com/reference/gt.html)`(``patients``[``, `[`c`](https://rdrr.io/r/base/c.html)`(``"patient_id"``, ``"age"``)``]``)`` ``flex_visits`` ``<-`` `[`flextable`](https://davidgohel.github.io/flextable/reference/flextable.html)`(`[`as.data.frame`](https://rdrr.io/r/base/as.data.frame.html)`(``visits``)``)`` `` ``# Both stylized HTML tables and raw data grids are accessible on the canvas`` `[`sideview`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview.md)`(``patients``, ``visits``, ``gt_summary``, ``flex_visits``)`
 
 ### 3. Export to Standalone HTML Widget
 
 Share interactive canvas boards as self-contained HTML files with zero
 external server dependencies:
 
-`# Save to an HTML file`` `[`save_sideview`](https://lauyeehow1986-hub.github.io/r_split/reference/save_sideview.md)`(`` `` `[`sideview_widget`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_widget.md)`(``patients``, ``visits``, diagnoses ``=`` ``dx_freq``)``,`` `` file ``=`` ``"study_overview.html"``,`` `` selfcontained ``=`` ``TRUE``,`` `` title ``=`` ``"Clinical Study Multi-Table Overview"`` ``)`
+`# Save to an HTML file`` `[`save_sideview`](https://lauyeehow1986-hub.github.io/sideview/reference/save_sideview.md)`(`` `` `[`sideview_widget`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_widget.md)`(``patients``, ``visits``, diagnoses ``=`` ``dx_freq``)``,`` `` file ``=`` ``"study_overview.html"``,`` `` selfcontained ``=`` ``TRUE``,`` `` title ``=`` ``"Clinical Study Multi-Table Overview"`` ``)`
 
 ### 4. Embedding in Quarto (`.qmd`) or R Markdown (`.Rmd`)
 
@@ -318,7 +318,7 @@ Compatible with: - **OpenAI**: `https://api.openai.com/v1` -
 | Function | Module | Description |
 |:---|:---|:---|
 | `sideview(...)` | Interactive Gadget | Launch Shiny Gadget or RStudio Addin on arbitrary tables |
-| [`sideview_addin()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_addin.md) | RStudio Addin | Addin entry point registered in RStudio Addins menu |
+| [`sideview_addin()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_addin.md) | RStudio Addin | Addin entry point registered in RStudio Addins menu |
 | `sideview_widget(...)` | Widget | Create an exportable `htmlwidget` instance |
 | `save_sideview(widget, file)` | Widget Export | Export canvas to standalone self-contained HTML file |
 | `sideviewOutput(id, ...)` | Shiny Integration | Shiny UI widget container |
@@ -337,7 +337,7 @@ Compatible with: - **OpenAI**: `https://api.openai.com/v1` -
 | `sv_build_prompt(...)` | LLM Engine | Constructs system instructions and user prompt |
 | `sv_call_llm(...)` | LLM Engine | Dispatches request to Ollama or OpenAI-compatible backend |
 | `sv_extract_code(...)` | LLM Engine | Extracts clean R code from markdown fences |
-| [`sv_is_rstudio_available()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_is_rstudio_available.md) | RStudio Bridge | Checks if RStudio API is available |
+| [`sv_is_rstudio_available()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_is_rstudio_available.md) | RStudio Bridge | Checks if RStudio API is available |
 | `sv_insert_code(code)` | RStudio Bridge | Inserts text into active document editor |
 | `sv_send_to_console(code)` | RStudio Bridge | Sends code to R console for execution |
 
@@ -346,7 +346,7 @@ Compatible with: - **OpenAI**: `https://api.openai.com/v1` -
 ## License
 
 This package is licensed under the [MIT
-License](https://lauyeehow1986-hub.github.io/r_split/LICENSE).
+License](https://lauyeehow1986-hub.github.io/sideview/LICENSE).
 
 ------------------------------------------------------------------------
 
@@ -365,15 +365,15 @@ decisions**.
 Launch the interactive side-by-side multi-table canvas in RStudio or
 standalone.
 
-- [`sideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview.md)
+- [`sideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview.md)
   : Multi-Table 2D Infinite Canvas Interactive Gadget
-- [`sideview_addin()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_addin.md)
+- [`sideview_addin()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_addin.md)
   : RStudio Addin for Sideview
-- [`sideview_ui()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_ui.md)
+- [`sideview_ui()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_ui.md)
   : Sideview User Interface
-- [`sideview_server()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_server.md)
+- [`sideview_server()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_server.md)
   : Sideview Server Logic
-- [`sv_find_tables()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_find_tables.md)
+- [`sv_find_tables()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_find_tables.md)
   : Find Tabular Data Objects in an Environment
 
 ## Standalone HTMLWidget & Export
@@ -381,13 +381,13 @@ standalone.
 Export interactive canvases to self-contained, portable HTML reports or
 embed in Shiny.
 
-- [`sideview_widget()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_widget.md)
+- [`sideview_widget()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_widget.md)
   : Create a Standalone Sideview HTMLWidget
-- [`save_sideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/save_sideview.md)
+- [`save_sideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/save_sideview.md)
   : Save Sideview Widget to a Standalone HTML File
-- [`sideviewOutput()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideviewOutput.md)
+- [`sideviewOutput()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideviewOutput.md)
   : Shiny Output Container for Sideview Widget
-- [`renderSideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/renderSideview.md)
+- [`renderSideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/renderSideview.md)
   : Shiny Render Function for Sideview Widget
 
 ## Tidyverse Code Generation Engine
@@ -395,19 +395,19 @@ embed in Shiny.
 Generate reproducible dplyr and forcats pipelines from visual canvas
 interactions.
 
-- [`sv_code_join()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_join.md)
+- [`sv_code_join()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_join.md)
   : Generate tidyverse Code for Relational Table Joins
-- [`sv_code_rename()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_rename.md)
+- [`sv_code_rename()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_rename.md)
   : Generate tidyverse Code for Column Renaming
-- [`sv_code_mutate()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_mutate.md)
+- [`sv_code_mutate()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_mutate.md)
   : Generate tidyverse Code for Column Mutation
-- [`sv_code_filter()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_filter.md)
+- [`sv_code_filter()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_filter.md)
   : Generate tidyverse Code for Filtering Rows
-- [`sv_code_arrange()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_arrange.md)
+- [`sv_code_arrange()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_arrange.md)
   : Generate tidyverse Code for Arranging (Sorting) Rows
-- [`sv_code_select()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_select.md)
+- [`sv_code_select()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_select.md)
   : Generate tidyverse Code for Selecting Columns
-- [`sv_escape_ident()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_escape_ident.md)
+- [`sv_escape_ident()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_escape_ident.md)
   : Escape R Identifiers with Backticks If Non-Syntactic
 
 ## Categorical Discrepancies & Recoding
@@ -415,9 +415,9 @@ interactions.
 Detect fuzzy string mismatches and generate case_match or fct_recode
 pipelines.
 
-- [`sv_detect_discrepancies()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_detect_discrepancies.md)
+- [`sv_detect_discrepancies()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_detect_discrepancies.md)
   : Detect Exact Matches, Discrepancies, and Fuzzy Near-Matches
-- [`sv_code_recode()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_recode.md)
+- [`sv_code_recode()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_recode.md)
   : Generate tidyverse Code for Categorical Recoding and Discrepancy
   Crosswalks
 
@@ -426,13 +426,13 @@ pipelines.
 Synthesize privacy-safe schema contexts and generate tidyverse code from
 natural language prompts.
 
-- [`sv_build_schema_context()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_build_schema_context.md)
+- [`sv_build_schema_context()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_build_schema_context.md)
   : Build a Privacy-Safe Schema Context from Sideview Cards
-- [`sv_build_prompt()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_build_prompt.md)
+- [`sv_build_prompt()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_build_prompt.md)
   : Build Structured Prompt for Tidyverse LLM Code Generation
-- [`sv_call_llm()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_call_llm.md)
+- [`sv_call_llm()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_call_llm.md)
   : Call Local Ollama or OpenAI-Compatible LLM Endpoint
-- [`sv_extract_code()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_extract_code.md)
+- [`sv_extract_code()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_extract_code.md)
   : Extract Executable R Code from LLM Response Text
 
 ## RStudio API & Environment Bridge
@@ -440,17 +440,17 @@ natural language prompts.
 Direct 1-click insertion into active RStudio script editor buffers and
 console execution.
 
-- [`sv_is_rstudio_available()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_is_rstudio_available.md)
+- [`sv_is_rstudio_available()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_is_rstudio_available.md)
   : Check if RStudio API is Available
-- [`sv_insert_code()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_insert_code.md)
+- [`sv_insert_code()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_insert_code.md)
   : Insert Generated Code into the Active RStudio Editor
-- [`sv_send_to_console()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_send_to_console.md)
+- [`sv_send_to_console()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_send_to_console.md)
   : Send Generated Code to the RStudio Console
 
 ## Universal S3 Normalization
 
 Convert heterogeneous tabular objects into standardized sideview cards.
 
-- [`sv_normalize()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_normalize.md)
+- [`sv_normalize()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_normalize.md)
   : Universal Normalization Engine for Sideview Cards
 

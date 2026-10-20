@@ -47,7 +47,7 @@
   in backticks across filter and arrange pipelines.
 - **List-Column & Vector Safeguard**: Hardened HTML grid table rendering
   in
-  [`sideview_ui()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_ui.md)
+  [`sideview_ui()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_ui.md)
   to handle nested list-columns and vectors safely with a `[list]`
   placeholder, avoiding length \> 1 evaluation errors under R 4.2+.
 
@@ -94,12 +94,12 @@
   interactive data exploration, visual field mapping, and LLM-assisted
   Tidyverse code generation.
 - Universal S3 normalization engine
-  ([`sv_normalize()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_normalize.md))
+  ([`sv_normalize()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_normalize.md))
   supporting `data.frame`, `tibble`,
   [`base::table`](https://rdrr.io/r/base/table.html), `matrix`, `gt`,
   `flextable`, and `htmlwidgets`.
 - Standalone self-contained HTML widget export via
-  [`save_sideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/save_sideview.md).
+  [`save_sideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/save_sideview.md).
 - Interactive Shiny Gadget and RStudio Addin
-  ([`sideview()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview.md),
-  [`sideview_addin()`](https://lauyeehow1986-hub.github.io/r_split/reference/sideview_addin.md)).
+  ([`sideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview.md),
+  [`sideview_addin()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_addin.md)).
