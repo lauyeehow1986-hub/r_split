@@ -1,0 +1,10 @@
+# Git worktrees
+.worktrees/
+
+# History and workspace files
+.Rhistory
+.RData
+.Ruserdata
+
+# RStudio files
+.Rproj.user/
