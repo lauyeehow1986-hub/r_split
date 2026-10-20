@@ -1,0 +1,10 @@
+dependencies:
+  - name: panzoom
+    version: 4.5.1
+    src: "www"
+    script: panzoom.min.js
+  - name: sideview-assets
+    version: 0.1.0
+    src: "www"
+    stylesheet: sideview.css
+    script: sideview.js
