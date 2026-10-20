@@ -14,10 +14,15 @@ sv_normalize <- function(x, name = NULL, id = NULL, ...) {
   UseMethod("sv_normalize")
 }
 
-#' Generate a unique ID for a card
+# Internal monotonic counter for predictable, side-effect-free ID generation
+.card_counter_env <- new.env(parent = emptyenv())
+.card_counter_env$val <- 0L
+
+#' Generate a unique ID for a card without perturbing .Random.seed
 #' @noRd
 generate_card_id <- function(prefix = "card") {
-  paste0(prefix, "_", paste0(sample(c(letters, 0:9), 8, replace = TRUE), collapse = ""))
+  .card_counter_env$val <- .card_counter_env$val + 1L
+  sprintf("%s_%06d", prefix, .card_counter_env$val)
 }
 
 #' Create a sideview_card S3 object
@@ -32,16 +37,16 @@ new_sideview_card <- function(id = NULL,
                               widget = NULL) {
   type <- match.arg(type)
 
-  if (is.null(id) || !nzchar(as.character(id))) {
+  if (is.null(id) || length(id) == 0L || is.na(id[1]) || !nzchar(as.character(id[1]))) {
     id <- generate_card_id()
   } else {
-    id <- as.character(id)
+    id <- as.character(id[1])
   }
 
-  if (is.null(name) || !nzchar(as.character(name))) {
+  if (is.null(name) || length(name) == 0L || is.na(name[1]) || !nzchar(as.character(name[1]))) {
     name <- "Table"
   } else {
-    name <- as.character(name)
+    name <- as.character(name[1])
   }
 
   if (!is.null(data) && is.data.frame(data)) {

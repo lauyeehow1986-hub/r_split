@@ -114,3 +114,23 @@ test_that("sv_normalize handles unsupported types with error", {
     "Cannot normalize object"
   )
 })
+
+test_that("sv_normalize handles matrix and edge cases gracefully", {
+  mat <- matrix(1:6, nrow = 2, ncol = 3, dimnames = list(NULL, c("a", "b", "c")))
+  card_mat <- sv_normalize(mat, name = "matrix_data")
+  expect_s3_class(card_mat, "sideview_card")
+  expect_equal(card_mat$type, "grid")
+  expect_equal(card_mat$dims, c(2L, 3L))
+
+  # Edge case: character(0) id and length > 1 names
+  card_zero_id <- sv_normalize(data.frame(x = 1), id = character(0), name = c("TableA", "TableB"))
+  expect_true(nzchar(card_zero_id$id))
+  expect_equal(card_zero_id$name, "TableA")
+
+  # Empty data frame
+  card_empty <- sv_normalize(data.frame())
+  expect_equal(card_empty$dims, c(0L, 0L))
+
+  # print.sideview_card output
+  expect_output(print(card_mat), "<sideview_card \\[grid\\]>")
+})
