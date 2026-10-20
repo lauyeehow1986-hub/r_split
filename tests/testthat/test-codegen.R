@@ -228,4 +228,35 @@ test_that("sv_code_recode generates case_match and fct_recode tidyverse code", {
   code_list <- sv_code_recode("df", "status", list_cw)
   expect_true(grepl('c\\("Compl.", "completed"\\) ~ "Completed"', code_list))
   expect_silent(parse(text = code_list))
+
+  # crosswalk with NA targets (e.g. mapping "Unknown" to NA)
+  cw_na <- data.frame(
+    from = c("Compl.", "InProg", "Missing", "Unknown"),
+    to = c("Completed", "In Progress", NA, NA),
+    stringsAsFactors = FALSE
+  )
+  code_na <- sv_code_recode("df", "status", cw_na)
+  expect_true(grepl('c\\("Missing", "Unknown"\\) ~ NA', code_na))
+  expect_true(grepl('"Compl." ~ "Completed"', code_na))
+  expect_false(grepl('NA_character_', code_na))
+  expect_silent(parse(text = code_na))
+})
+
+test_that("codegen edge cases and defensive checks pass", {
+  # Empty columns in rename
+  expect_error(sv_code_rename("df", character(0), character(0)), "must not be empty")
+
+  # Empty columns in join
+  expect_error(sv_code_join("df1", "df2", character(0), character(0)), "must not be empty")
+
+  # NA in max_distance for discrepancy detection
+  res_na_dist <- sv_detect_discrepancies(c("apple", "banana"), c("aple", "berry"), max_distance = NA)
+  expect_equal(res_na_dist$stats$exact_count, 0)
+  expect_equal(nrow(res_na_dist$fuzzy_matches), 1)
+  expect_equal(res_na_dist$fuzzy_matches$x, "apple")
+  expect_equal(res_na_dist$fuzzy_matches$y, "aple")
+
+  # Backtick escaping regex check
+  expect_equal(sv_escape_ident("`already_escaped`"), "`already_escaped`")
+  expect_equal(sv_escape_ident("needs escape"), "`needs escape`")
 })

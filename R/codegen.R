@@ -7,7 +7,7 @@ sv_escape_ident <- function(x) {
   if (is.null(x) || length(x) == 0) return(character(0))
   vapply(x, function(name) {
     if (is.na(name)) return(NA_character_)
-    if (grepl("^`.*`$", name) && nchar(name) >= 2) return(name)
+    if (grepl("^`[^`]+`$", name)) return(name)
     reserved <- c("if", "else", "repeat", "while", "function", "for", "in", 
                   "next", "break", "TRUE", "FALSE", "NULL", "Inf", "NaN", 
                   "NA", "NA_integer_", "NA_real_", "NA_complex_", "NA_character_")
@@ -30,6 +30,9 @@ sv_escape_ident <- function(x) {
 #' @return A character string of R code.
 #' @export
 sv_code_rename <- function(df_name, old_col, new_col, pipe = FALSE) {
+  if (length(old_col) == 0 || length(new_col) == 0) {
+    stop("`old_col` and `new_col` must not be empty.")
+  }
   if (length(old_col) != length(new_col)) {
     stop("`old_col` and `new_col` must have the same length.")
   }
@@ -69,12 +72,16 @@ sv_code_join <- function(df1, df2, col1, col2 = col1, join_type = "left", pipe =
   }
   fn_name <- paste0("dplyr::", jt, "_join")
   
+  if (length(col1) == 0 || length(col2) == 0) {
+    stop("Join columns (`col1` and `col2`) must not be empty.")
+  }
   if (length(col1) != length(col2)) {
     stop("`col1` and `col2` must have the same length.")
   }
   
   # Format by argument
-  if (all(col1 == col2)) {
+  is_same <- identical(col1, col2) || (!anyNA(col1) && !anyNA(col2) && all(col1 == col2))
+  if (is_same) {
     if (length(col1) == 1) {
       by_str <- sprintf('by = %s', deparse1(col1))
     } else {
@@ -188,7 +195,11 @@ sv_code_select <- function(df_name, cols, pipe = FALSE) {
 #' }
 #' @export
 sv_detect_discrepancies <- function(x, y, max_distance = 2) {
-  max_dist <- max(0L, as.integer(max_distance))
+  max_dist <- if (is.null(max_distance) || length(max_distance) == 0 || is.na(max_distance[1])) {
+    2L
+  } else {
+    max(0L, as.integer(max_distance[1]))
+  }
   
   na_x <- sum(is.na(x))
   na_y <- sum(is.na(y))
@@ -203,35 +214,28 @@ sv_detect_discrepancies <- function(x, y, max_distance = 2) {
   only_in_x <- setdiff(ux, uy)
   only_in_y <- setdiff(uy, ux)
   
-  # Fuzzy matching: for each discrepancy in x, find candidate matches in y
-  fuzzy_rows <- list()
-  if (length(only_in_x) > 0 && length(uy) > 0 && max_dist > 0) {
-    for (vx in only_in_x) {
-      for (vy in uy) {
-        d <- as.integer(utils::adist(vx, vy)[1, 1])
-        if (d <= max_dist) {
-          fuzzy_rows[[length(fuzzy_rows) + 1L]] <- list(x = vx, y = vy, distance = d)
-        }
-      }
-    }
-  }
+  # Vectorized fuzzy matching: calculate distance matrix in C
+  fuzzy_matches <- data.frame(
+    x = character(0),
+    y = character(0),
+    distance = integer(0),
+    stringsAsFactors = FALSE
+  )
   
-  if (length(fuzzy_rows) > 0) {
-    fuzzy_matches <- do.call(rbind.data.frame, c(fuzzy_rows, list(stringsAsFactors = FALSE)))
-    fuzzy_matches$x <- as.character(fuzzy_matches$x)
-    fuzzy_matches$y <- as.character(fuzzy_matches$y)
-    fuzzy_matches$distance <- as.integer(fuzzy_matches$distance)
-    # Deduplicate and sort by distance, x, y
-    fuzzy_matches <- unique(fuzzy_matches)
-    fuzzy_matches <- fuzzy_matches[order(fuzzy_matches$distance, fuzzy_matches$x, fuzzy_matches$y), , drop = FALSE]
-    rownames(fuzzy_matches) <- NULL
-  } else {
-    fuzzy_matches <- data.frame(
-      x = character(0),
-      y = character(0),
-      distance = integer(0),
-      stringsAsFactors = FALSE
-    )
+  if (length(only_in_x) > 0 && length(uy) > 0 && max_dist > 0) {
+    dist_mat <- utils::adist(only_in_x, uy)
+    m_idx <- which(dist_mat <= max_dist, arr.ind = TRUE)
+    if (nrow(m_idx) > 0) {
+      fuzzy_matches <- data.frame(
+        x = as.character(only_in_x[m_idx[, 1]]),
+        y = as.character(uy[m_idx[, 2]]),
+        distance = as.integer(dist_mat[m_idx]),
+        stringsAsFactors = FALSE
+      )
+      fuzzy_matches <- unique(fuzzy_matches)
+      fuzzy_matches <- fuzzy_matches[order(fuzzy_matches$distance, fuzzy_matches$x, fuzzy_matches$y), , drop = FALSE]
+      rownames(fuzzy_matches) <- NULL
+    }
   }
   
   total_x <- length(x)
@@ -330,12 +334,20 @@ sv_code_recode <- function(df_name, col, crosswalk, default = NULL,
     unique_targets <- unique(to_vals)
     case_lines <- character(0)
     for (tgt in unique_targets) {
-      srcs <- from_vals[to_vals == tgt]
-      if (length(srcs) == 1) {
-        case_lines <- c(case_lines, sprintf("%s ~ %s", deparse1(srcs), deparse1(tgt)))
+      if (is.na(tgt)) {
+        srcs <- from_vals[is.na(to_vals)]
+        tgt_rep <- "NA"
       } else {
-        srcs_str <- paste(vapply(srcs, deparse1, character(1)), collapse = ", ")
-        case_lines <- c(case_lines, sprintf("c(%s) ~ %s", srcs_str, deparse1(tgt)))
+        srcs <- from_vals[!is.na(to_vals) & to_vals == tgt]
+        tgt_rep <- deparse1(tgt)
+      }
+      
+      format_src <- function(s) if (is.na(s)) "NA" else deparse1(s)
+      if (length(srcs) == 1) {
+        case_lines <- c(case_lines, sprintf("%s ~ %s", format_src(srcs), tgt_rep))
+      } else {
+        srcs_str <- paste(vapply(srcs, format_src, character(1)), collapse = ", ")
+        case_lines <- c(case_lines, sprintf("c(%s) ~ %s", srcs_str, tgt_rep))
       }
     }
     
