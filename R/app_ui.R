@@ -67,7 +67,7 @@ render_card_tag <- function(card, index = 1L) {
       htmltools::tags$button(
         class = "sideview-icon-btn",
         `data-action` = "sync-scroll",
-        title = "Synchronize vertical scrolling",
+        title = "Synchronize vertical & horizontal scrolling",
         htmltools::HTML("&#128279;")
       ),
       htmltools::tags$button(

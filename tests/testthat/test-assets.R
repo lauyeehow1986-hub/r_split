@@ -95,6 +95,8 @@ test_that("sideview.js contains required functions, event handlers, and Shiny in
   # Independent table scrolling and synchronized scroll sync
   expect_match(js, "scroll|sync|scrollSync|syncScroll", 
                info = "sideview.js must implement table scrolling and sync scroll")
+  expect_match(js, "scrollLeft", 
+               info = "sideview.js must support horizontal scroll synchronization")
 
   # Cell/column color highlighting
   expect_match(js, "highlight|palette|color", 

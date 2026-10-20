@@ -565,7 +565,7 @@
       dimsText ? '  <span class="sideview-badge">' + dimsText + '</span>' : '',
       '</div>',
       '<div class="sideview-card-actions">',
-      '  <button class="sideview-icon-btn" data-action="sync-scroll" title="Synchronize vertical scrolling">&#128279;</button>',
+      '  <button class="sideview-icon-btn" data-action="sync-scroll" title="Synchronize vertical & horizontal scrolling">&#128279;</button>',
       '  <button class="sideview-icon-btn" data-action="minimize-card" title="Minimize">&minus;</button>',
       '</div>'
     ].join('');
@@ -806,19 +806,38 @@
       if (self.isSyncingScroll || !self.syncScrollCards.has(cardMeta.id)) return;
       if (self.syncScrollCards.size < 2) return;
 
-      var maxScroll = body.scrollHeight - body.clientHeight;
-      if (maxScroll <= 0) return;
-      var scrollRatio = body.scrollTop / maxScroll;
+      // Vertical scroll ratio
+      var maxScrollY = body.scrollHeight - body.clientHeight;
+      var scrollRatioY = maxScrollY > 0 ? (body.scrollTop / maxScrollY) : 0;
+
+      // Horizontal row/column scroll ratio
+      var maxScrollX = body.scrollWidth - body.clientWidth;
+      var scrollRatioX = maxScrollX > 0 ? (body.scrollLeft / maxScrollX) : 0;
 
       self.isSyncingScroll = true;
       self.syncScrollCards.forEach(function (otherId) {
         if (otherId === cardMeta.id) return;
         var other = self.cards.get(otherId);
         if (other && other.body) {
-          var otherMax = other.body.scrollHeight - other.body.clientHeight;
-          var targetTop = scrollRatio * otherMax;
-          if (Math.abs(other.body.scrollTop - targetTop) > 1) {
-            other.body.scrollTop = targetTop;
+          // Synchronize vertical position
+          if (maxScrollY > 0) {
+            var otherMaxY = other.body.scrollHeight - other.body.clientHeight;
+            if (otherMaxY > 0) {
+              var targetTop = scrollRatioY * otherMaxY;
+              if (Math.abs(other.body.scrollTop - targetTop) > 1) {
+                other.body.scrollTop = targetTop;
+              }
+            }
+          }
+          // Synchronize horizontal row/column position
+          if (maxScrollX > 0) {
+            var otherMaxX = other.body.scrollWidth - other.body.clientWidth;
+            if (otherMaxX > 0) {
+              var targetLeft = scrollRatioX * otherMaxX;
+              if (Math.abs(other.body.scrollLeft - targetLeft) > 1) {
+                other.body.scrollLeft = targetLeft;
+              }
+            }
           }
         }
       });
