@@ -117,6 +117,7 @@ test_that("save_sideview exports widget to standalone HTML file on disk", {
   saved_path <- save_sideview(w, file = tf, selfcontained = TRUE)
 
   expect_true(file.exists(tf))
+  expect_equal(saved_path, normalizePath(tf, winslash = "/", mustWork = FALSE))
   file_size <- file.info(tf)$size
   expect_true(file_size > 1000)
 
@@ -128,6 +129,14 @@ test_that("save_sideview exports widget to standalone HTML file on disk", {
   expect_true(grepl("htmlwidget", html_text, ignore.case = TRUE))
   expect_true(grepl("products", html_text))
   expect_true(grepl("inventory", html_text))
+
+  # Test auto-creating nested destination subdirectories
+  nested_dir <- file.path(tempdir(), paste0("test_nested_", as.integer(runif(1, 1000, 9999))))
+  nested_file <- file.path(nested_dir, "report.html")
+  on.exit(unlink(nested_dir, recursive = TRUE), add = TRUE)
+  ret_nested <- save_sideview(w, file = nested_file, selfcontained = TRUE)
+  expect_true(file.exists(nested_file))
+  expect_equal(ret_nested, normalizePath(nested_file, winslash = "/", mustWork = FALSE))
 })
 
 test_that("save_sideview accepts raw data.frames directly", {

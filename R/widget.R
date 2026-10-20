@@ -55,7 +55,7 @@ sideview_widget_dependencies <- function() {
   # Sideview htmlwidget binding dependency
   if (nzchar(hw_dir) && file.exists(file.path(hw_dir, "sideview.js"))) {
     deps[[length(deps) + 1]] <- htmltools::htmlDependency(
-      name = "sideview-binding",
+      name = "sideview",
       version = "0.1.0",
       src = c(file = hw_dir),
       script = "sideview.js"
@@ -217,7 +217,7 @@ save_sideview <- function(widget,
     ...
   )
   
-  invisible(file)
+  invisible(normalizePath(file, winslash = "/", mustWork = FALSE))
 }
 
 #' Shiny Output Container for Sideview Widget

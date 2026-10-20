@@ -47,8 +47,8 @@ HTMLWidgets.widget({
       },
 
       resize: function(width, height) {
-        if (engine && engine.panzoom && typeof engine.panzoom.reset === 'function') {
-          // Responsive resize adjustment if needed
+        if (engine && typeof engine.updateConnectors === 'function') {
+          engine.updateConnectors();
         }
       }
 
