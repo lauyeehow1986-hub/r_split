@@ -225,6 +225,15 @@ test_that("sideview_server handles inject_script and send_console events", {
     # Test send_console
     session$setInputs(send_console = list(code = "summary(df)"))
     expect_equal(console_code, "summary(df)")
+    
+    # Test send_console_and_exit
+    session$setInputs(send_console_and_exit = list(code = "print(df)"))
+    expect_equal(console_code, "print(df)")
+    
+    # Test eval_env
+    session$setInputs(eval_env = list(code = "test_var_sv <- 42; data.frame(a = test_var_sv)"))
+    expect_equal(get("test_var_sv", envir = .GlobalEnv), 42)
+    if (exists("test_var_sv", envir = .GlobalEnv)) rm("test_var_sv", envir = .GlobalEnv)
   })
 })
 

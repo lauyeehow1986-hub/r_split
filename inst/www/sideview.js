@@ -239,7 +239,15 @@
       } else if (action === 'inject-script') {
         sendToShiny('inject_script', { code: self.generatedCode });
       } else if (action === 'send-console') {
+      } else if (action === 'send-console') {
+        self.showToast('Queuing code to RStudio console...', 'warning');
         sendToShiny('send_console', { code: self.generatedCode });
+      } else if (action === 'send-console-exit') {
+        self.showToast('Executing in RStudio console and closing gadget...', 'success');
+        sendToShiny('send_console_and_exit', { code: self.generatedCode });
+      } else if (action === 'eval-env') {
+        self.showToast('Evaluating in R environment...', 'info');
+        sendToShiny('eval_env', { code: self.generatedCode });
       } else if (action === 'copy-code') {
         if (navigator.clipboard && self.generatedCode) {
           navigator.clipboard.writeText(self.generatedCode);
@@ -812,6 +820,23 @@
     if (drawer) drawer.classList.remove('collapsed');
   };
 
+  /**
+   * Display a status toast banner
+   */
+  SideviewEngine.prototype.showToast = function (message, type) {
+    var toast = document.createElement('div');
+    toast.className = 'sideview-toast ' + (type ? 'sideview-toast-' + type : '');
+    toast.textContent = message;
+    this.container.appendChild(toast);
+    setTimeout(function () {
+      toast.classList.add('visible');
+    }, 10);
+    setTimeout(function () {
+      toast.classList.remove('visible');
+      setTimeout(function () { toast.remove(); }, 300);
+    }, 4500);
+  };
+
   SideviewEngine.prototype.registerShinyHandlers = function () {
     var self = this;
     if (typeof global.Shiny === 'undefined' || typeof global.Shiny.addCustomMessageHandler !== 'function') {
@@ -819,6 +844,24 @@
     }
 
     // Code update from R server
+    global.Shiny.addCustomMessageHandler('sideview_console_result', function (data) {
+      if (data && data.message) {
+        self.showToast(data.message, data.success ? 'success' : 'warning');
+      }
+    });
+
+    global.Shiny.addCustomMessageHandler('sideview_inject_result', function (data) {
+      if (data && data.message) {
+        self.showToast(data.message, data.success ? 'success' : 'warning');
+      }
+    });
+
+    global.Shiny.addCustomMessageHandler('sideview_eval_result', function (data) {
+      if (data && data.message) {
+        self.showToast(data.message, data.success ? 'success' : 'danger');
+      }
+    });
+
     global.Shiny.addCustomMessageHandler('sideview_code_update', function (data) {
       if (data && data.code) {
         self.updateDrawerCode(data.code);

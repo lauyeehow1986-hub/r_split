@@ -191,13 +191,46 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
     dispatch_message("sideview_inject_result", res)
   }, ignoreInit = FALSE)
 
-  # 6. Send Console -> rstudioapi console execution
+  # 6. Send Console -> rstudioapi console execution (queued)
   shiny::observeEvent(input$send_console, {
     evt <- input$send_console
     if (is.null(evt)) return()
     code <- if (is.list(evt)) evt$code else evt
     res <- console_fn(code)
+    if (isTRUE(res$success)) {
+      res$message <- "Code queued to RStudio console (will execute as soon as the gadget closes, or use 'Run & Exit')!"
+    }
     dispatch_message("sideview_console_result", res)
+  }, ignoreInit = FALSE)
+
+  # 6b. Send Console & Exit -> stops gadget so RStudio console executes immediately
+  shiny::observeEvent(input$send_console_and_exit, {
+    evt <- input$send_console_and_exit
+    if (is.null(evt)) return()
+    code <- if (is.list(evt)) evt$code else evt
+    res <- console_fn(code)
+    dispatch_message("sideview_console_result", res)
+    tryCatch(shiny::stopApp(), error = function(e) NULL)
+  }, ignoreInit = FALSE)
+
+  # 6c. Evaluate in .GlobalEnv -> executes code in active R session environment
+  shiny::observeEvent(input$eval_env, {
+    evt <- input$eval_env
+    if (is.null(evt)) return()
+    code <- if (is.list(evt)) evt$code else evt
+    eval_res <- tryCatch({
+      expr <- parse(text = code)
+      out <- eval(expr, envir = .GlobalEnv)
+      msg <- if (is.data.frame(out)) {
+        sprintf("Executed in R environment: %d rows x %d cols.", nrow(out), ncol(out))
+      } else {
+        "Executed successfully in R environment."
+      }
+      list(success = TRUE, destination = "environment", message = msg)
+    }, error = function(e) {
+      list(success = FALSE, destination = "environment", message = paste0("Execution error: ", conditionMessage(e)))
+    })
+    dispatch_message("sideview_eval_result", eval_res)
   }, ignoreInit = FALSE)
 
   # 7. Highlight Changes
