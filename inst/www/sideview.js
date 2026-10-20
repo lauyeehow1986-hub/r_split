@@ -209,12 +209,23 @@
       if (!btn) return;
       var action = btn.dataset.action;
 
+      var rect = self.container.getBoundingClientRect();
+      var centerPoint = { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 };
+
       if (action === 'zoom-in' && self.panzoom) {
-        self.panzoom.zoom(self.panzoom.getScale() * 1.25);
+        self.panzoom.zoomToPoint(self.panzoom.getScale() * 1.25, centerPoint);
       } else if (action === 'zoom-out' && self.panzoom) {
-        self.panzoom.zoom(self.panzoom.getScale() * 0.8);
+        self.panzoom.zoomToPoint(self.panzoom.getScale() * 0.8, centerPoint);
       } else if (action === 'zoom-reset' && self.panzoom) {
         self.panzoom.reset();
+      } else if (action === 'minimize-card') {
+        var card = btn.closest('.sideview-card');
+        if (card) {
+          var b = card.querySelector('.sideview-card-body');
+          if (b) {
+            b.style.display = b.style.display === 'none' ? '' : 'none';
+          }
+        }
       } else if (action === 'toggle-snap') {
         self.options.snapToEdge = !self.options.snapToEdge;
         btn.classList.toggle('active', self.options.snapToEdge);
@@ -399,13 +410,18 @@
       input.select();
 
       function finishRename() {
+        input.removeEventListener('blur', finishRename);
         var newName = input.value.trim();
         input.remove();
         colNameEl.style.display = '';
 
         if (newName && newName !== currentName) {
           colNameEl.textContent = newName;
-          if (th) th.dataset.colName = newName;
+          if (th) {
+            th.dataset.colName = newName;
+            var port = th.querySelector('.sideview-col-port');
+            if (port) port.dataset.colName = newName;
+          }
           sendToShiny('column_renamed', {
             table: cardName,
             old_col: currentName,
@@ -420,6 +436,7 @@
           input.removeEventListener('blur', finishRename);
           finishRename();
         } else if (evt.key === 'Escape') {
+          input.removeEventListener('blur', finishRename);
           input.remove();
           colNameEl.style.display = '';
         }
@@ -677,10 +694,15 @@
         var other = self.cards.get(otherId);
         if (other && other.body) {
           var otherMax = other.body.scrollHeight - other.body.clientHeight;
-          other.body.scrollTop = scrollRatio * otherMax;
+          var targetTop = scrollRatio * otherMax;
+          if (Math.abs(other.body.scrollTop - targetTop) > 1) {
+            other.body.scrollTop = targetTop;
+          }
         }
       });
-      self.isSyncingScroll = false;
+      requestAnimationFrame(function () {
+        self.isSyncingScroll = false;
+      });
     });
   };
 
@@ -720,7 +742,8 @@
    * Compute cubic bezier curve path string between two ports
    */
   SideviewEngine.prototype.getBezierPath = function (p1, p2) {
-    var dx = Math.max(40, Math.abs(p2.x - p1.x) * 0.45);
+    var dir = p2.x >= p1.x ? 1 : -1;
+    var dx = Math.max(40, Math.abs(p2.x - p1.x) * 0.45) * dir;
     return 'M ' + p1.x + ' ' + p1.y + ' C ' + (p1.x + dx) + ' ' + p1.y + ', ' +
       (p2.x - dx) + ' ' + p2.y + ', ' + p2.x + ' ' + p2.y;
   };
@@ -778,11 +801,29 @@
     global.Shiny.addCustomMessageHandler('sideview_discrepancies', function (data) {
       if (!data) return;
 
+      var targetCards = [];
+      if (data.from_table) {
+        var c1 = self.container.querySelector('[data-card-name="' + data.from_table + '"]');
+        if (c1) targetCards.push(c1);
+      }
+      if (data.to_table) {
+        var c2 = self.container.querySelector('[data-card-name="' + data.to_table + '"]');
+        if (c2) targetCards.push(c2);
+      }
+      var scope = targetCards.length > 0 ? targetCards : [self.container];
+
+      var searchCells = [];
+      scope.forEach(function (el) {
+        var found = el.querySelectorAll('td');
+        for (var i = 0; i < found.length; i++) {
+          searchCells.push(found[i]);
+        }
+      });
+
       // Highlight discrepancy cells in connected tables
       if (data.fuzzy_matches && Array.isArray(data.fuzzy_matches)) {
         data.fuzzy_matches.forEach(function (pair) {
-          var cells = self.container.querySelectorAll('td');
-          cells.forEach(function (c) {
+          searchCells.forEach(function (c) {
             if (c.textContent.trim() === String(pair.x) || c.textContent.trim() === String(pair.y)) {
               c.classList.add('sideview-discrepancy-fuzzy');
             }
@@ -792,8 +833,7 @@
 
       if (data.only_in_x || data.only_in_y) {
         var diffValues = (data.only_in_x || []).concat(data.only_in_y || []);
-        var allCells = self.container.querySelectorAll('td');
-        allCells.forEach(function (c) {
+        searchCells.forEach(function (c) {
           if (diffValues.indexOf(c.textContent.trim()) !== -1) {
             c.classList.add('sideview-discrepancy-diff');
           }
