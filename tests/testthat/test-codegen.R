@@ -260,3 +260,34 @@ test_that("codegen edge cases and defensive checks pass", {
   expect_equal(sv_escape_ident("`already_escaped`"), "`already_escaped`")
   expect_equal(sv_escape_ident("needs escape"), "`needs escape`")
 })
+
+
+test_that("sv_code_arrange generates valid tidyverse arrange pipelines", {
+  # Standard column ascending
+  c1 <- sv_code_arrange("patients", "age", pipe = TRUE)
+  expect_equal(c1, "patients %>% dplyr::arrange(age)")
+  expect_silent(parse(text = c1))
+
+  # Descending column
+  c2 <- sv_code_arrange("patients", "age", desc = TRUE, pipe = TRUE)
+  expect_equal(c2, "patients %>% dplyr::arrange(dplyr::desc(age))")
+  expect_silent(parse(text = c2))
+
+  # Prefix syntax without pipe
+  c3 <- sv_code_arrange("patients", "age", desc = FALSE, pipe = FALSE)
+  expect_equal(c3, "dplyr::arrange(patients, age)")
+  expect_silent(parse(text = c3))
+
+  # Non-syntactic column name
+  c4 <- sv_code_arrange("patients", "bad column name", desc = TRUE, pipe = TRUE)
+  expect_equal(c4, "patients %>% dplyr::arrange(dplyr::desc(`bad column name`))")
+  expect_silent(parse(text = c4))
+
+  # Multiple columns with mixed directions
+  c5 <- sv_code_arrange("patients", c("age", "systolic bp"), desc = c(FALSE, TRUE), pipe = TRUE)
+  expect_equal(c5, "patients %>% dplyr::arrange(age, dplyr::desc(`systolic bp`))")
+  expect_silent(parse(text = c5))
+
+  # Errors on empty column
+  expect_error(sv_code_arrange("patients", character(0)), "must not be empty")
+})

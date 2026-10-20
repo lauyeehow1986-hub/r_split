@@ -135,6 +135,8 @@
         '</div>',
         '<div class="sideview-drawer-tabs">',
         '  <button class="sideview-drawer-tab active" data-tab="join">Join</button>',
+        '  <button class="sideview-drawer-tab" data-tab="filter">Filter</button>',
+        '  <button class="sideview-drawer-tab" data-tab="arrange">Arrange</button>',
         '  <button class="sideview-drawer-tab" data-tab="mutate">Mutate</button>',
         '  <button class="sideview-drawer-tab" data-tab="recode">Recode</button>',
         '  <button class="sideview-drawer-tab" data-tab="discrepancy">Discrepancy</button>',
@@ -412,6 +414,30 @@
       }
     });
 
+    // Sort Column Click
+    this.container.addEventListener('click', function (e) {
+      var sortBtn = e.target.closest('[data-action="sort-col"]');
+      if (!sortBtn) return;
+      e.stopPropagation();
+      var cardEl = sortBtn.closest('.sideview-card');
+      var th = sortBtn.closest('th');
+      if (!cardEl || !th) return;
+      var colName = sortBtn.dataset.colName || th.dataset.colName;
+      self.sortColumn(cardEl, colName, th.cellIndex, sortBtn);
+    });
+
+    // Filter Column Click
+    this.container.addEventListener('click', function (e) {
+      var filterBtn = e.target.closest('[data-action="filter-col"]');
+      if (!filterBtn) return;
+      e.stopPropagation();
+      var cardEl = filterBtn.closest('.sideview-card');
+      var th = filterBtn.closest('th');
+      if (!cardEl || !th) return;
+      var colName = filterBtn.dataset.colName || th.dataset.colName;
+      self.openFilterPopover(cardEl, colName, th.cellIndex, filterBtn);
+    });
+
     // Column Connection Port Handling
     this.container.addEventListener('click', function (e) {
       var port = e.target.closest('.sideview-col-port');
@@ -565,11 +591,15 @@
         var colType = colTypes[colName] || '';
         th.innerHTML = [
           '<div class="col-header-wrap">',
-          '  <div>',
+          '  <div class="col-header-left">',
           '    <span class="sideview-col-name">' + colName + '</span>',
           colType ? '    <span class="sideview-col-type">(' + colType + ')</span>' : '',
           '  </div>',
-          '  <span class="sideview-col-port" data-col-name="' + colName + '" title="Connect to map field"></span>',
+          '  <div class="col-header-tools">',
+          '    <button class="sideview-th-btn sideview-sort-btn" data-action="sort-col" data-col-name="' + colName + '" title="Sort column (Asc / Desc / Reset)">⇅</button>',
+          '    <button class="sideview-th-btn sideview-filter-btn" data-action="filter-col" data-col-name="' + colName + '" title="Filter column">🔍</button>',
+          '    <span class="sideview-col-port" data-col-name="' + colName + '" title="Connect to map field"></span>',
+          '  </div>',
           '</div>'
         ].join('');
         headerRow.appendChild(th);
@@ -965,6 +995,23 @@
     var activePorts = this.container.querySelectorAll('.sideview-col-port.active, .sideview-col-port.selected');
     activePorts.forEach(function (p) { p.classList.remove('active', 'selected'); });
 
+    // 2b. Reset all column sort indicators and row filters
+    var pop = document.querySelector('.sideview-filter-popover');
+    if (pop) pop.remove();
+    this.container.querySelectorAll('.sideview-row-filtered').forEach(function (r) {
+      r.classList.remove('sideview-row-filtered');
+    });
+    this.container.querySelectorAll('.sideview-sort-btn').forEach(function (b) {
+      b.textContent = '⇅';
+      b.classList.remove('active');
+    });
+    this.container.querySelectorAll('.sideview-filter-btn').forEach(function (b) {
+      b.classList.remove('active');
+    });
+    this.container.querySelectorAll('thead th').forEach(function (th) {
+      th.dataset.sortState = 'none';
+    });
+
     // 3. Clear discrepancy highlighting
     var discCells = this.container.querySelectorAll('.sideview-discrepancy-fuzzy, .sideview-discrepancy-diff');
     discCells.forEach(function (c) {
@@ -982,6 +1029,261 @@
     if (!silent) {
       this.showToast('Tidyverse operations and connectors cleared.', 'info');
     }
+  };
+
+  /**
+   * Switch active tab in Action Drawer
+   */
+  SideviewEngine.prototype.activateDrawerTab = function (tabName) {
+    var tabs = this.container.querySelectorAll('.sideview-drawer-tab');
+    tabs.forEach(function (t) {
+      if (t.dataset.tab === tabName) {
+        t.classList.add('active');
+      } else {
+        t.classList.remove('active');
+      }
+    });
+  };
+
+  /**
+   * Interactive Column Sorting (Asc -> Desc -> Reset)
+   */
+  SideviewEngine.prototype.sortColumn = function (cardEl, colName, colIndex, btn) {
+    var self = this;
+    var table = cardEl.querySelector('.sideview-table');
+    if (!table) return;
+    var tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    var th = table.querySelectorAll('thead th')[colIndex];
+    if (!th) return;
+
+    var currentState = th.dataset.sortState || 'none';
+    var nextState = 'asc';
+    if (currentState === 'asc') nextState = 'desc';
+    else if (currentState === 'desc') nextState = 'none';
+
+    // Reset sort indicators on all headers in this table
+    table.querySelectorAll('thead th').forEach(function (otherTh) {
+      otherTh.dataset.sortState = 'none';
+      var sBtn = otherTh.querySelector('.sideview-sort-btn');
+      if (sBtn) {
+        sBtn.textContent = '⇅';
+        sBtn.classList.remove('active');
+      }
+    });
+
+    th.dataset.sortState = nextState;
+
+    // Get all rows
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.forEach(function (r, idx) {
+      if (!r.dataset.rowIndex) r.dataset.rowIndex = idx;
+    });
+
+    if (nextState === 'none') {
+      // Restore initial order
+      rows.sort(function (a, b) {
+        return parseInt(a.dataset.rowIndex, 10) - parseInt(b.dataset.rowIndex, 10);
+      });
+      btn.textContent = '⇅';
+      btn.classList.remove('active');
+      self.showToast('Reset column sort order on ' + colName, 'info');
+    } else {
+      btn.classList.add('active');
+      btn.textContent = nextState === 'asc' ? '▲' : '▼';
+
+      rows.sort(function (a, b) {
+        var cellA = a.cells[colIndex] ? a.cells[colIndex].textContent.trim() : '';
+        var cellB = b.cells[colIndex] ? b.cells[colIndex].textContent.trim() : '';
+
+        var numA = parseFloat(cellA);
+        var numB = parseFloat(cellB);
+        var isNum = !isNaN(numA) && !isNaN(numB) && cellA !== '' && cellB !== '';
+
+        var cmp = 0;
+        if (isNum) {
+          cmp = numA - numB;
+        } else {
+          cmp = cellA.localeCompare(cellB, undefined, { numeric: true, sensitivity: 'base' });
+        }
+        return nextState === 'asc' ? cmp : -cmp;
+      });
+
+      var cardName = cardEl.dataset.cardName || 'df';
+      var arrangeArg = nextState === 'desc' ? 'dplyr::desc(' + colName + ')' : colName;
+      var arrangeCode = cardName + ' %>%
+  dplyr::arrange(' + arrangeArg + ')';
+
+      self.activateDrawerTab('arrange');
+      self.updateDrawerCode(arrangeCode);
+      self.showToast('Sorted ' + colName + ' (' + (nextState === 'asc' ? 'ascending' : 'descending') + ')', 'success');
+
+      sendToShiny('column_sorted', {
+        table: cardName,
+        column: colName,
+        direction: nextState,
+        code: arrangeCode
+      });
+    }
+
+    rows.forEach(function (r) { tbody.appendChild(r); });
+    self.updateConnectors();
+  };
+
+  /**
+   * Interactive Column Filter Popover
+   */
+  SideviewEngine.prototype.openFilterPopover = function (cardEl, colName, colIndex, btn) {
+    var self = this;
+    var existing = document.querySelector('.sideview-filter-popover');
+    if (existing) {
+      var isSame = existing._sourceBtn === btn;
+      existing.remove();
+      if (isSame) return;
+    }
+
+    var cardName = cardEl.dataset.cardName || 'df';
+    var popover = document.createElement('div');
+    popover.className = 'sideview-filter-popover';
+    popover._sourceBtn = btn;
+
+    popover.innerHTML = [
+      '<div class="sideview-filter-popover-header">',
+      '  <span>Filter: ' + colName + '</span>',
+      '  <button class="sideview-icon-btn sideview-filter-close" title="Close">&times;</button>',
+      '</div>',
+      '<select class="sideview-filter-select">',
+      '  <option value="contains">contains</option>',
+      '  <option value="equals">equals (==)</option>',
+      '  <option value="not_equals">not equals (!=)</option>',
+      '  <option value="gt">greater than (&gt;)</option>',
+      '  <option value="gte">greater or equal (&gt;=)</option>',
+      '  <option value="lt">less than (&lt;)</option>',
+      '  <option value="lte">less or equal (&lt;=)</option>',
+      '</select>',
+      '<input type="text" class="sideview-filter-input" placeholder="Value..." />',
+      '<div class="sideview-filter-actions">',
+      '  <button class="sideview-filter-clear">Clear</button>',
+      '  <button class="sideview-filter-apply">Apply</button>',
+      '</div>'
+    ].join('');
+
+    document.body.appendChild(popover);
+
+    var btnRect = btn.getBoundingClientRect();
+    popover.style.left = Math.min(window.innerWidth - 240, Math.max(10, btnRect.left - 80)) + 'px';
+    popover.style.top = (btnRect.bottom + 6) + 'px';
+
+    var select = popover.querySelector('.sideview-filter-select');
+    var input = popover.querySelector('.sideview-filter-input');
+    input.focus();
+
+    popover.querySelector('.sideview-filter-close').addEventListener('click', function () {
+      popover.remove();
+    });
+
+    popover.querySelector('.sideview-filter-clear').addEventListener('click', function () {
+      var table = cardEl.querySelector('.sideview-table');
+      if (table) {
+        table.querySelectorAll('tbody tr').forEach(function (tr) {
+          tr.classList.remove('sideview-row-filtered');
+        });
+      }
+      btn.classList.remove('active');
+      popover.remove();
+      self.updateConnectors();
+      self.showToast('Cleared filter on ' + colName, 'info');
+    });
+
+    function applyFilter() {
+      var val = input.value.trim();
+      if (!val) {
+        popover.remove();
+        return;
+      }
+      var op = select.value;
+      var table = cardEl.querySelector('.sideview-table');
+      if (!table) return;
+
+      var rows = table.querySelectorAll('tbody tr');
+      var matchedCount = 0;
+      var numVal = parseFloat(val);
+      var isNumFilter = !isNaN(numVal);
+
+      rows.forEach(function (tr) {
+        var cell = tr.cells[colIndex];
+        var text = cell ? cell.textContent.trim() : '';
+        var numCell = parseFloat(text);
+        var match = false;
+
+        if (op === 'contains') {
+          match = text.toLowerCase().indexOf(val.toLowerCase()) !== -1;
+        } else if (op === 'equals') {
+          match = isNumFilter && !isNaN(numCell) ? numCell === numVal : text.toLowerCase() === val.toLowerCase();
+        } else if (op === 'not_equals') {
+          match = isNumFilter && !isNaN(numCell) ? numCell !== numVal : text.toLowerCase() !== val.toLowerCase();
+        } else if (op === 'gt') {
+          match = !isNaN(numCell) && numCell > numVal;
+        } else if (op === 'gte') {
+          match = !isNaN(numCell) && numCell >= numVal;
+        } else if (op === 'lt') {
+          match = !isNaN(numCell) && numCell < numVal;
+        } else if (op === 'lte') {
+          match = !isNaN(numCell) && numCell <= numVal;
+        }
+
+        if (match) {
+          tr.classList.remove('sideview-row-filtered');
+          matchedCount++;
+        } else {
+          tr.classList.add('sideview-row-filtered');
+        }
+      });
+
+      btn.classList.add('active');
+
+      var condExpr = '';
+      if (op === 'contains') {
+        condExpr = 'stringr::str_detect(' + colName + ', "' + val + '")';
+      } else if (op === 'equals') {
+        condExpr = isNumFilter ? colName + ' == ' + val : colName + ' == "' + val + '"';
+      } else if (op === 'not_equals') {
+        condExpr = isNumFilter ? colName + ' != ' + val : colName + ' != "' + val + '"';
+      } else if (op === 'gt') {
+        condExpr = colName + ' > ' + val;
+      } else if (op === 'gte') {
+        condExpr = colName + ' >= ' + val;
+      } else if (op === 'lt') {
+        condExpr = colName + ' < ' + val;
+      } else if (op === 'lte') {
+        condExpr = colName + ' <= ' + val;
+      }
+
+      var filterCode = cardName + ' %>%
+  dplyr::filter(' + condExpr + ')';
+      self.activateDrawerTab('filter');
+      self.updateDrawerCode(filterCode);
+      self.showToast('Filtered ' + colName + ' (' + matchedCount + '/' + rows.length + ' rows)', 'success');
+
+      sendToShiny('column_filtered', {
+        table: cardName,
+        column: colName,
+        operator: op,
+        value: val,
+        condition: condExpr,
+        code: filterCode
+      });
+
+      popover.remove();
+      self.updateConnectors();
+    }
+
+    popover.querySelector('.sideview-filter-apply').addEventListener('click', applyFilter);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') applyFilter();
+      else if (e.key === 'Escape') popover.remove();
+    });
   };
 
   SideviewEngine.prototype.showToast = function (message, type) {

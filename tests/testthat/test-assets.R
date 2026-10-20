@@ -66,6 +66,10 @@ test_that("sideview.css contains all required CSS selectors and styles", {
   # Color highlighter swatches palette
   expect_match(css, "\\.sideview-palette", info = "sideview.css must contain .sideview-palette")
 
+  # Column header sorting and filtering styles
+  expect_match(css, "\\.sideview-sort-btn|\\.sideview-th-btn", info = "sideview.css must style sort buttons")
+  expect_match(css, "\\.sideview-filter-popover", info = "sideview.css must style filter popover")
+
   # Modern CSS custom properties (variables)
   expect_match(css, "--sv-|--sideview-", info = "sideview.css must use CSS custom properties")
 })
@@ -115,6 +119,10 @@ test_that("sideview.js contains required functions, event handlers, and Shiny in
   # Disconnect individual column splines
   expect_match(js, "removeConnection|column_disconnected", 
                info = "sideview.js must support disconnecting individual column splines")
+  
+  # Interactive column sorting and filter popover
+  expect_match(js, "sortColumn|column_sorted", info = "sideview.js must support column sorting")
+  expect_match(js, "openFilterPopover|column_filtered", info = "sideview.js must support filter popover")
 })
 
 test_that("panzoom.min.js contains a valid Panzoom library implementation", {

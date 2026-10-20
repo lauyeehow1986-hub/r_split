@@ -49,6 +49,7 @@ reference:
       - sv_code_rename
       - sv_code_mutate
       - sv_code_filter
+      - sv_code_arrange
       - sv_code_select
       - sv_escape_ident
 

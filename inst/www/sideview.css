@@ -740,3 +740,134 @@
   cursor: pointer;
   accent-color: var(--sv-primary);
 }
+
+/* Column Header Tools & Buttons */
+.col-header-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.col-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.col-header-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+.sideview-th-btn {
+  background: transparent;
+  border: none;
+  color: var(--sv-text-muted);
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: var(--sv-radius-sm);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.sideview-th-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--sv-text);
+}
+
+.sideview-th-btn.active {
+  opacity: 1;
+  color: var(--sv-primary);
+  font-weight: bold;
+}
+
+.sideview-filter-btn.active {
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--sv-primary);
+  opacity: 1;
+}
+
+/* Floating Filter Popover */
+.sideview-filter-popover {
+  position: absolute;
+  background: var(--sv-card-bg);
+  border: 1px solid var(--sv-border);
+  border-radius: var(--sv-radius-md);
+  box-shadow: var(--sv-shadow-floating);
+  padding: 10px 12px;
+  z-index: 500;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--sv-font);
+  font-size: 12px;
+}
+
+.sideview-filter-popover-header {
+  font-weight: 600;
+  color: var(--sv-text);
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sideview-filter-select, .sideview-filter-input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--sv-border);
+  border-radius: var(--sv-radius-sm);
+  font-size: 12px;
+  background: var(--sv-card-bg);
+  color: var(--sv-text);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.sideview-filter-select:focus, .sideview-filter-input:focus {
+  border-color: var(--sv-primary);
+}
+
+.sideview-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.sideview-filter-apply {
+  background: var(--sv-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--sv-radius-sm);
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sideview-filter-clear {
+  background: transparent;
+  color: var(--sv-text-muted);
+  border: 1px solid var(--sv-border);
+  border-radius: var(--sv-radius-sm);
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* Row Filtered State */
+.sideview-row-filtered {
+  display: none !important;
+}

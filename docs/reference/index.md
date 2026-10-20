@@ -43,6 +43,8 @@ interactions.
   : Generate tidyverse Code for Column Mutation
 - [`sv_code_filter()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_filter.md)
   : Generate tidyverse Code for Filtering Rows
+- [`sv_code_arrange()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_arrange.md)
+  : Generate tidyverse Code for Arranging (Sorting) Rows
 - [`sv_code_select()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_code_select.md)
   : Generate tidyverse Code for Selecting Columns
 - [`sv_escape_ident()`](https://lauyeehow1986-hub.github.io/r_split/reference/sv_escape_ident.md)

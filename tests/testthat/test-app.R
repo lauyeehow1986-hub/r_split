@@ -144,6 +144,35 @@ test_that("sideview_server handles column_renamed input event", {
   })
 })
 
+test_that("sideview_server handles column_sorted and column_filtered events", {
+  df <- data.frame(id = 1:5, score = c(88, 92, 79, 95, 83))
+  cards <- list(sv_normalize(df, name = "scores"))
+  
+  shiny::testServer(sideview_server(cards), {
+    # Test column_sorted
+    session$setInputs(column_sorted = list(
+      table = "scores",
+      column = "score",
+      direction = "desc"
+    ))
+    msgs <- session$userData$custom_messages
+    last_msg <- msgs[[length(msgs)]]
+    expect_equal(last_msg$type, "sideview_code_update")
+    expect_match(last_msg$message$code, "scores\\s*%>%.*dplyr::arrange\\(dplyr::desc\\(score\\)\\)")
+    
+    # Test column_filtered
+    session$setInputs(column_filtered = list(
+      table = "scores",
+      column = "score",
+      condition = "score >= 90"
+    ))
+    msgs2 <- session$userData$custom_messages
+    last_msg2 <- msgs2[[length(msgs2)]]
+    expect_equal(last_msg2$type, "sideview_code_update")
+    expect_match(last_msg2$message$code, "scores\\s*%>%.*dplyr::filter\\(score >= 90\\)")
+  })
+})
+
 test_that("sideview_server handles discrepancy_check input event", {
   df1 <- data.frame(status = c("Completed", "In Prog", "Cancelled", "Unknown"), stringsAsFactors = FALSE)
   df2 <- data.frame(state = c("Completed", "InProg", "Canceled", "Missing"), stringsAsFactors = FALSE)

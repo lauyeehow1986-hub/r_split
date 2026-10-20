@@ -152,6 +152,45 @@ sv_code_filter <- function(df_name, condition, pipe = FALSE) {
   }
 }
 
+#' Generate tidyverse Code for Arranging (Sorting) Rows
+#'
+#' @param df_name Name of the data frame.
+#' @param col Character vector of column name(s) to sort by.
+#' @param desc Logical vector indicating descending order for each column.
+#'   Recycled to match the length of `col`. Defaults to `FALSE`.
+#' @param pipe Logical; if TRUE, uses pipe syntax `df %>% dplyr::arrange(...)`.
+#' @return A character string of R code.
+#' @export
+sv_code_arrange <- function(df_name, col, desc = FALSE, pipe = FALSE) {
+  if (is.null(col) || length(col) == 0) {
+    stop('`col` must not be empty.')
+  }
+  esc_cols <- sv_escape_ident(col)
+  desc <- rep_len(as.logical(desc), length(col))
+  
+  col_terms <- mapply(function(c_name, is_desc) {
+    if (isTRUE(is_desc)) {
+      sprintf('dplyr::desc(%s)', c_name)
+    } else {
+      c_name
+    }
+  }, esc_cols, desc, USE.NAMES = FALSE)
+  
+  args <- paste(col_terms, collapse = ', ')
+  
+  if (pipe) {
+    esc_df <- sv_escape_ident(df_name)
+    sprintf("%s %%>%% dplyr::arrange(%s)", esc_df, args)
+  } else {
+    esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
+    if (is.null(esc_df)) {
+      sprintf('dplyr::arrange(%s)', args)
+    } else {
+      sprintf('dplyr::arrange(%s, %s)', esc_df, args)
+    }
+  }
+}
+
 #' Generate tidyverse Code for Selecting Columns
 #'
 #' @param df_name Name of the data frame.

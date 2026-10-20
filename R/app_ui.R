@@ -94,20 +94,21 @@ render_card_tag <- function(card, index = 1L) {
         htmltools::tags$div(
           class = "col-header-wrap",
           htmltools::tags$div(
+            class = "col-header-left",
             htmltools::tags$span(class = "sideview-col-name", col),
             if (!is.null(c_type) && !is.na(c_type) && nzchar(c_type)) {
               htmltools::tags$span(class = "sideview-col-type", paste0("(", c_type, ")"))
             }
           ),
-          htmltools::tags$span(
-            class = "sideview-col-port",
-            `data-col-name` = col,
-            title = "Connect to map field"
+          htmltools::tags$div(
+            class = "col-header-tools",
+            htmltools::tags$button(class = "sideview-th-btn sideview-sort-btn", `data-action` = "sort-col", `data-col-name` = col, title = "Sort column (Asc / Desc / Reset)", "⇅"),
+            htmltools::tags$button(class = "sideview-th-btn sideview-filter-btn", `data-action` = "filter-col", `data-col-name` = col, title = "Filter column", "🔍"),
+            htmltools::tags$span(class = "sideview-col-port", `data-col-name` = col, title = "Connect to map field")
           )
         )
       )
     })
-    
     # Table rows (virtualized preview up to 500 rows)
     max_preview <- min(nrow(df), 500L)
     row_tags <- vector("list", max_preview)
@@ -250,6 +251,8 @@ sideview_ui <- function(cards = list(), title = "Sideview Canvas") {
     htmltools::tags$div(
       class = "sideview-drawer-tabs",
       htmltools::tags$button(class = "sideview-drawer-tab active", `data-tab` = "join", "Join"),
+      htmltools::tags$button(class = "sideview-drawer-tab", `data-tab` = "filter", "Filter"),
+      htmltools::tags$button(class = "sideview-drawer-tab", `data-tab` = "arrange", "Arrange"),
       htmltools::tags$button(class = "sideview-drawer-tab", `data-tab` = "mutate", "Mutate"),
       htmltools::tags$button(class = "sideview-drawer-tab", `data-tab` = "recode", "Recode"),
       htmltools::tags$button(class = "sideview-drawer-tab", `data-tab` = "discrepancy", "Discrepancy")

@@ -92,6 +92,38 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
     # Disconnected event logged / available in session
   }, ignoreInit = FALSE)
 
+  # 1c. Column Sorted -> Arrange Code Generation
+  shiny::observeEvent(input$column_sorted, {
+    evt <- input$column_sorted
+    if (is.null(evt)) return()
+    tbl <- evt$table %||% 'df'
+    col <- evt$column
+    dir <- evt$direction %||% 'asc'
+    if (is.null(col) || !nzchar(col)) return()
+    if (dir == 'none') return()
+    code <- tryCatch({
+      sv_code_arrange(df_name = tbl, col = col, desc = (dir == 'desc'), pipe = TRUE)
+    }, error = function(e) {
+      sprintf('# Error generating arrange code: %s', conditionMessage(e))
+    })
+    dispatch_message('sideview_code_update', list(code = code))
+  }, ignoreInit = FALSE)
+
+  # 1d. Column Filtered -> Filter Code Generation
+  shiny::observeEvent(input$column_filtered, {
+    evt <- input$column_filtered
+    if (is.null(evt)) return()
+    tbl <- evt$table %||% 'df'
+    cond <- evt$condition
+    if (is.null(cond) || !nzchar(cond)) return()
+    code <- tryCatch({
+      sv_code_filter(df_name = tbl, condition = cond, pipe = TRUE)
+    }, error = function(e) {
+      sprintf('# Error generating filter code: %s', conditionMessage(e))
+    })
+    dispatch_message('sideview_code_update', list(code = code))
+  }, ignoreInit = FALSE)
+
   # 2. Column Renamed -> Rename Code Generation
   shiny::observeEvent(input$column_renamed, {
     evt <- input$column_renamed
