@@ -161,7 +161,7 @@ Install the development version of `sideview` from GitHub:
 
 ```r
 # install.packages("remotes")
-remotes::install_github("lauyeehow1986-hub/r_split")
+remotes::install_github("sideview/sideview")
 ```
 
 ### Dependencies

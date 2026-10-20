@@ -212,7 +212,7 @@ etc.): Visual embedded cards for side-by-side comparison.
 
 Install the development version of `sideview` from GitHub:
 
-`# install.packages("remotes")`` ``remotes``::`[`install_github`](https://remotes.r-lib.org/reference/install_github.html)`(``"lauyeehow1986-hub/r_split"``)`
+`# install.packages("remotes")`` ``remotes``::`[`install_github`](https://remotes.r-lib.org/reference/install_github.html)`(``"sideview/sideview"``)`
 
 ### Dependencies
 
