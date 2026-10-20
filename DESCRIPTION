@@ -4,6 +4,8 @@ Version: 0.1.0
 Authors@R: person("sideview", "Authors", email = "author@example.com", role = c("aut", "cre"))
 Description: An interactive 2D infinite canvas for multi-table exploration,
     interactive field mapping, and LLM-assisted tidyverse code generation.
+URL: https://lauyeehow1986-hub.github.io/r_split/, https://github.com/lauyeehow1986-hub/r_split
+BugReports: https://github.com/lauyeehow1986-hub/r_split/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

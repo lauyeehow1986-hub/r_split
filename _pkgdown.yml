@@ -1,0 +1,79 @@
+url: https://lauyeehow1986-hub.github.io/r_split/
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    primary: "#0284c7"
+    secondary: "#64748b"
+    success: "#10b981"
+    info: "#06b6d4"
+    bg: "#ffffff"
+    fg: "#0f172a"
+
+home:
+  title: "sideview: Multi-Table 2D Infinite Canvas for R"
+  description: "Explore multiple tables simultaneously on an infinite 2D canvas with mouse-wheel zoom, visual field mapping, and LLM-assisted tidyverse code generation."
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    github:
+      icon: fab fa-github fa-lg
+      href: https://github.com/lauyeehow1986-hub/r_split
+      aria-label: GitHub repository
+
+reference:
+  - title: "Interactive Canvas & Gadget"
+    desc: "Launch the interactive side-by-side multi-table canvas in RStudio or standalone."
+    contents:
+      - sideview
+      - sideview_addin
+      - sideview_ui
+      - sideview_server
+      - sv_find_tables
+
+  - title: "Standalone HTMLWidget & Export"
+    desc: "Export interactive canvases to self-contained, portable HTML reports or embed in Shiny."
+    contents:
+      - sideview_widget
+      - save_sideview
+      - sideviewOutput
+      - renderSideview
+
+  - title: "Tidyverse Code Generation Engine"
+    desc: "Generate reproducible dplyr and forcats pipelines from visual canvas interactions."
+    contents:
+      - sv_code_join
+      - sv_code_rename
+      - sv_code_mutate
+      - sv_code_filter
+      - sv_code_select
+      - sv_escape_ident
+
+  - title: "Categorical Discrepancies & Recoding"
+    desc: "Detect fuzzy string mismatches and generate case_match or fct_recode pipelines."
+    contents:
+      - sv_detect_discrepancies
+      - sv_code_recode
+
+  - title: "Local Ollama & OpenAI LLM Engine"
+    desc: "Synthesize privacy-safe schema contexts and generate tidyverse code from natural language prompts."
+    contents:
+      - sv_build_schema_context
+      - sv_build_prompt
+      - sv_call_llm
+      - sv_extract_code
+
+  - title: "RStudio API & Environment Bridge"
+    desc: "Direct 1-click insertion into active RStudio script editor buffers and console execution."
+    contents:
+      - sv_is_rstudio_available
+      - sv_insert_code
+      - sv_send_to_console
+
+  - title: "Universal S3 Normalization"
+    desc: "Convert heterogeneous tabular objects into standardized sideview cards."
+    contents:
+      - sv_normalize

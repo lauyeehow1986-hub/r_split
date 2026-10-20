@@ -1,0 +1,57 @@
+# Generate tidyverse Code for Categorical Recoding and Discrepancy Crosswalks
+
+Generate tidyverse Code for Categorical Recoding and Discrepancy
+Crosswalks
+
+## Usage
+
+``` r
+sv_code_recode(
+  df_name,
+  col,
+  crosswalk,
+  default = NULL,
+  method = c("case_match", "fct_recode"),
+  pipe = FALSE
+)
+```
+
+## Arguments
+
+- df_name:
+
+  Name of the data frame.
+
+- col:
+
+  Column name to recode.
+
+- crosswalk:
+
+  Mapping between source and target values. Can be:
+
+  - A data.frame with source values in column 1 and target values in
+    column 2.
+
+  - A named character vector (names = source values, values = target
+    values).
+
+  - A named list where names are target values and elements are vectors
+    of source values.
+
+- default:
+
+  Fallback value for unmatched records. If NULL, omitted. If equal to
+  `col`, emits unquoted column name `.default = <col>`.
+
+- method:
+
+  Recoding function: "case_match" (dplyr) or "fct_recode" (forcats).
+
+- pipe:
+
+  Logical; if TRUE, uses pipe syntax `df %>% dplyr::mutate(...)`.
+
+## Value
+
+A character string of R code.
