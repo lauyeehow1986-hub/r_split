@@ -160,10 +160,19 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
 
     schema <- sv_build_schema_context(normalized_cards)
     prompt_obj <- sv_build_prompt(evt$prompt, schema_context = schema)
-    backend <- evt$backend %||% "ollama"
+    backend <- evt$backend %||% getOption("sideview.llm_backend", Sys.getenv("SIDEVIEW_LLM_BACKEND", "ollama"))
+    model <- evt$model %||% getOption("sideview.llm_model", NULL)
+    endpoint <- evt$endpoint %||% getOption("sideview.llm_endpoint", NULL)
+    api_key <- evt$api_key %||% getOption("sideview.llm_api_key", NULL)
 
     ai_code <- tryCatch({
-      raw_resp <- llm_fn(prompt = prompt_obj, backend = backend)
+      raw_resp <- llm_fn(
+        prompt = prompt_obj,
+        backend = backend,
+        model = model,
+        endpoint = endpoint,
+        api_key = api_key
+      )
       extracted <- sv_extract_code(raw_resp)
       if (nzchar(extracted)) extracted else raw_resp
     }, error = function(e) {

@@ -274,16 +274,16 @@ sv_call_llm <- function(prompt,
 
   # Endpoint and model defaults
   if (backend == "ollama") {
-    endpoint <- endpoint %||% Sys.getenv("OLLAMA_HOST", "http://localhost:11434")
-    model <- model %||% Sys.getenv("SIDEVIEW_OLLAMA_MODEL", "llama3.2")
+    endpoint <- endpoint %||% getOption("sideview.llm_endpoint", Sys.getenv("OLLAMA_HOST", "http://localhost:11434"))
+    model <- model %||% getOption("sideview.llm_model", Sys.getenv("SIDEVIEW_OLLAMA_MODEL", "llama3.2"))
     endpoint <- sub("/+$", "", endpoint)
     if (!grepl("/api/chat$", endpoint)) {
       endpoint <- paste0(endpoint, "/api/chat")
     }
   } else {
-    endpoint <- endpoint %||% Sys.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-    model <- model %||% Sys.getenv("SIDEVIEW_OPENAI_MODEL", "gpt-4o-mini")
-    api_key <- api_key %||% Sys.getenv("OPENAI_API_KEY", "")
+    endpoint <- endpoint %||% getOption("sideview.llm_endpoint", Sys.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"))
+    model <- model %||% getOption("sideview.llm_model", Sys.getenv("SIDEVIEW_OPENAI_MODEL", "gpt-4o-mini"))
+    api_key <- api_key %||% getOption("sideview.llm_api_key", Sys.getenv("OPENAI_API_KEY", ""))
     endpoint <- sub("/+$", "", endpoint)
     if (!grepl("/chat/completions$", endpoint)) {
       endpoint <- paste0(endpoint, "/chat/completions")

@@ -49,6 +49,7 @@
     this.initDOM();
     this.initPanzoom();
     this.initEventListeners();
+    this.initExistingCards();
 
     if (this.options.cards && this.options.cards.length > 0) {
       this.options.cards.forEach(function (cardData, index) {
@@ -661,12 +662,38 @@
   };
 
   /**
+   * Scan and initialize pre-rendered DOM cards (e.g. from Shiny Gadget mode)
+   */
+  SideviewEngine.prototype.initExistingCards = function () {
+    var self = this;
+    if (!this.viewport) return;
+    var existingCards = this.viewport.querySelectorAll('.sideview-card');
+    existingCards.forEach(function (cardEl, index) {
+      var cardId = cardEl.dataset.cardId || cardEl.id || ('card_' + index);
+      var cardName = cardEl.dataset.cardName || ('Table_' + (index + 1));
+      var body = cardEl.querySelector('.sideview-card-body');
+      var cardMeta = {
+        id: cardId,
+        name: cardName,
+        element: cardEl,
+        body: body,
+        x: parseFloat(cardEl.style.left) || 0,
+        y: parseFloat(cardEl.style.top) || 0
+      };
+      self.cards.set(cardId, cardMeta);
+      self.setupCardDrag(cardEl, cardMeta);
+      self.setupScrollSync(cardMeta);
+    });
+  };
+
+  /**
    * Synchronized vertical scroll handler for linked table pairs
    */
   SideviewEngine.prototype.setupScrollSync = function (cardMeta) {
     var self = this;
     var syncBtn = cardMeta.element.querySelector('[data-action="sync-scroll"]');
     var body = cardMeta.body;
+    if (!body) return;
 
     if (syncBtn) {
       syncBtn.addEventListener('click', function () {
@@ -681,6 +708,7 @@
     }
 
     body.addEventListener('scroll', function () {
+      self.updateConnectors();
       if (self.isSyncingScroll || !self.syncScrollCards.has(cardMeta.id)) return;
       if (self.syncScrollCards.size < 2) return;
 

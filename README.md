@@ -34,7 +34,6 @@ sideview(patients, visits, lab_results, gt_summary)
 | :--- | :---: | :---: |
 | **Workspace Layout** | Single-table tabbed view (one table at a time) | **Infinite 2D canvas** (unlimited tables side-by-side) |
 | **Navigation** | Basic paging | **Smooth mouse-wheel zoom (25%–250%) & canvas pan** |
-| **Minimap Overview** | ❌ None | ✅ **Interactive radar minimap with click-to-jump** |
 | **Table Alignment** | ❌ None | ✅ **Magnetic snap-to-edge docking** |
 | **Synchronized Scrolling** | ❌ None | ✅ **Locked synchronous vertical row scrolling** |
 | **Multi-Format Ingestion** | `data.frame` only | ✅ **`data.frame`, `tibble`, `table`, `matrix`, `gt`, `flextable`, `htmlwidgets`** |
@@ -99,7 +98,6 @@ flowchart TD
 ### 1. Infinite 2D Panzoom Canvas
 - **Focal-point Zoom**: Smooth scaling from 25% to 250% centered on your mouse cursor.
 - **Canvas Panning**: Middle-click or canvas drag to traverse large multi-table layouts.
-- **Minimap Radar**: Real-time canvas radar showing card positions with click-to-jump navigation.
 - **Snap-to-Edge Alignment**: Drag cards into alignment with magnetic guides for side-by-side row inspection.
 - **Synchronized Row Scrolling**: Lock vertical scrolling between any pair of tables to visually inspect matched records.
 
@@ -303,17 +301,15 @@ Compatible with:
 | Action | Control / Shortcut | Description |
 | :--- | :--- | :--- |
 | **Zoom In / Out** | `Mouse Wheel` | Smooth scaling centered at cursor position (25% to 250%) |
-| **Pan Canvas** | `Click + Drag` or `Space + Drag` | Pan across the infinite canvas |
-| **Reset View** | `Double Click Canvas` or `Home` | Centers and resets zoom to 100% |
-| **Jump to Table** | `Click Card in Minimap` | Instantly moves viewport to the selected card |
+| **Pan Canvas** | `Click + Drag` on canvas background | Pan across the infinite canvas |
+| **Reset View** | `Click "100%" in Toolbar` | Centers and resets zoom to 100% |
 | **Move Table Card** | `Drag Card Header` | Reposition card anywhere on canvas |
 | **Dock / Snap** | `Drag near card edge` | Snaps cards together with magnetic guidelines |
 | **Rename Column** | `Double-click column header` | Inline edit; generates `dplyr::rename()` |
-| **Filter Column** | `Click Filter Icon (🔍)` | Opens text, numeric range, or checklist filter |
-| **Color Highlight** | `Click Cell / Row + Palette Swatch` | Annotate cells or rows with custom highlighter colors |
+| **Color Highlight** | `Click Cell + Palette Swatch` | Annotate cells with custom highlighter colors |
 | **Synchronized Scroll** | `Click Link Icon (🔗)` on card header | Locks vertical scroll between adjacent tables |
-| **Connect Columns** | `Click Column A` then `Click Column B` | Draws SVG bezier spline and opens Codegen Drawer |
-| **Submit AI Prompt** | `Ctrl + Enter` / `Cmd + Enter` | Sends prompt to configured LLM |
+| **Connect Columns** | `Click Column A Port` then `Column B Port` | Draws SVG bezier spline and opens Codegen Drawer |
+| **Submit AI Prompt** | `Click "Send" in AI Bar` | Sends natural language prompt to configured LLM |
 | **Insert Code to Script** | `Click "Insert to Script"` | Pastes generated R code at cursor via `rstudioapi` |
 | **Send to Console** | `Click "Run in Console"` | Sends generated code directly to active R console |
 
