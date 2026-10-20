@@ -287,3 +287,44 @@ test_that("sv_send_to_console catches errors thrown inside sendToConsole", {
     }
   )
 })
+
+test_that("sv_insert_code supports explicit location and document id via getSourceEditorContext", {
+  passed_loc <- NULL
+  passed_text <- NULL
+  passed_id <- NULL
+
+  testthat::with_mocked_bindings(
+    isAvailable = function(...) TRUE,
+    getSourceEditorContext = function(...) list(id = "doc_source_1", path = "script.R"),
+    getActiveDocumentContext = function(...) list(id = "#console"),
+    insertText = function(location = NULL, text = NULL, id = NULL, ...) {
+      passed_loc <<- location
+      passed_text <<- text
+      passed_id <<- id
+      invisible(NULL)
+    },
+    .package = "rstudioapi",
+    code = {
+      res <- sv_insert_code(c("x <- 1", NA, "y <- 2"), location = c(5, 1))
+      expect_true(res$success)
+      expect_equal(passed_loc, c(5, 1))
+      expect_equal(passed_text, "x <- 1\ny <- 2")
+      expect_equal(passed_id, "doc_source_1")
+    }
+  )
+})
+
+test_that("sv_insert_code handles #console gracefully when no source editor exists", {
+  testthat::with_mocked_bindings(
+    isAvailable = function(...) TRUE,
+    getSourceEditorContext = function(...) list(id = "#console"),
+    getActiveDocumentContext = function(...) list(id = "#console"),
+    .package = "rstudioapi",
+    code = {
+      res <- sv_insert_code("df %>% head()")
+      expect_false(res$success)
+      expect_equal(res$destination, "fallback")
+      expect_match(res$message, "No active document", ignore.case = TRUE)
+    }
+  )
+})

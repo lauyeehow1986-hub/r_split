@@ -42,7 +42,8 @@ sv_insert_code <- function(code, location = NULL, ...) {
   if (is.null(code) || length(code) == 0) {
     code_str <- ""
   } else {
-    code_str <- paste(as.character(code), collapse = "\n")
+    valid_lines <- code[!is.na(code)]
+    code_str <- paste(as.character(valid_lines), collapse = "\n")
   }
 
   if (!sv_is_rstudio_available()) {
@@ -54,12 +55,29 @@ sv_insert_code <- function(code, location = NULL, ...) {
     ))
   }
 
-  has_active_doc <- tryCatch({
-    ctx <- rstudioapi::getActiveDocumentContext()
-    !is.null(ctx) && !is.null(ctx$id) && nzchar(ctx$id) && ctx$id != "#console"
-  }, error = function(e) FALSE)
+  # First attempt to resolve active document via getSourceEditorContext
+  # (handles Shiny Gadgets and console focus), then fall back to getActiveDocumentContext
+  ctx <- tryCatch({
+    c_edit <- rstudioapi::getSourceEditorContext()
+    if (!is.null(c_edit) && !is.null(c_edit$id) && nzchar(c_edit$id) && c_edit$id != "#console") {
+      c_edit
+    } else {
+      NULL
+    }
+  }, error = function(e) NULL)
 
-  if (!has_active_doc) {
+  if (is.null(ctx)) {
+    ctx <- tryCatch({
+      c_act <- rstudioapi::getActiveDocumentContext()
+      if (!is.null(c_act) && !is.null(c_act$id) && nzchar(c_act$id) && c_act$id != "#console") {
+        c_act
+      } else {
+        NULL
+      }
+    }, error = function(e) NULL)
+  }
+
+  if (is.null(ctx)) {
     return(list(
       success = FALSE,
       destination = "fallback",
@@ -69,11 +87,15 @@ sv_insert_code <- function(code, location = NULL, ...) {
   }
 
   tryCatch({
-    if (is.null(location)) {
-      rstudioapi::insertText(text = code_str, ...)
-    } else {
-      rstudioapi::insertText(location = location, text = code_str, ...)
+    insert_args <- list(text = code_str, ...)
+    if (!is.null(location)) {
+      insert_args$location <- location
     }
+    if (!"id" %in% names(insert_args) && !is.null(ctx$id)) {
+      insert_args$id <- ctx$id
+    }
+    do.call(rstudioapi::insertText, insert_args)
+
     list(
       success = TRUE,
       destination = "editor",
@@ -114,8 +136,11 @@ sv_send_to_console <- function(code, execute = TRUE, ...) {
   if (is.null(code) || length(code) == 0) {
     code_str <- ""
   } else {
-    code_str <- paste(as.character(code), collapse = "\n")
+    valid_lines <- code[!is.na(code)]
+    code_str <- paste(as.character(valid_lines), collapse = "\n")
   }
+
+  execute <- isTRUE(execute)
 
   if (!sv_is_rstudio_available()) {
     return(list(
