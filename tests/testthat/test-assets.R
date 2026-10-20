@@ -143,3 +143,9 @@ test_that("panzoom.min.js contains a valid Panzoom library implementation", {
   expect_match(pz, "panzoom|Panzoom|transform|matrix|zoom", 
                info = "panzoom.min.js must contain Panzoom library functionality")
 })
+
+test_that("sideview.js resets activePort in clearOperations and escapes column names", {
+  js <- read_asset("sideview.js")
+  expect_match(js, "activePort", info = "Must handle activePort in clearOperations")
+  expect_match(js, "escapeIdent|escapeCol", info = "Must escape column identifiers")
+})

@@ -115,7 +115,15 @@ render_card_tag <- function(card, index = 1L) {
     for (r in seq_len(max_preview)) {
       td_tags <- lapply(col_names, function(col) {
         val <- df[[col]][r]
-        val_str <- if (is.null(val) || is.na(val)) "NA" else as.character(val)
+        val_str <- if (is.null(val) || length(val) == 0L) {
+          ""
+        } else if (is.list(val) || length(val) > 1L) {
+          "[list]"
+        } else if (is.na(val)) {
+          "NA"
+        } else {
+          as.character(val)
+        }
         is_num <- is.numeric(df[[col]])
         htmltools::tags$td(
           class = if (is_num) "is-number" else NULL,

@@ -8,7 +8,13 @@
   'use strict';
 
   // Helper to safely dispatch Shiny input values
-  function sendToShiny(name, value) {
+    // Helper to escape non-syntactic R column identifiers
+  function escapeColIdentifier(name) {
+    if (!name) return '';
+    return /^[a-zA-Z.][a-zA-Z0-9._]*$/.test(name) ? name : '`' + name.replace(/`/g, '\\`') + '`';
+  }
+
+function sendToShiny(name, value) {
     if (typeof global.Shiny !== 'undefined' && typeof global.Shiny.setInputValue === 'function') {
       global.Shiny.setInputValue(name, value, { priority: 'event' });
     } else {
@@ -1008,12 +1014,18 @@
     }
 
     // 2. Clear port selections
+    if (this.activePort) {
+      if (this.activePort.element) {
+        this.activePort.element.classList.remove('connecting', 'active', 'selected');
+      }
+      this.activePort = null;
+    }
     if (this.selectedPort) {
       this.selectedPort.classList.remove('active', 'selected', 'connecting');
       this.selectedPort = null;
     }
-    var activePorts = this.container.querySelectorAll('.sideview-col-port.active, .sideview-col-port.selected');
-    activePorts.forEach(function (p) { p.classList.remove('active', 'selected'); });
+    var activePorts = this.container.querySelectorAll('.sideview-col-port.active, .sideview-col-port.selected, .sideview-col-port.connecting');
+    activePorts.forEach(function (p) { p.classList.remove('active', 'selected', 'connecting'); });
 
     // 2b. Reset all column sort indicators and row filters
     var pop = document.querySelector('.sideview-filter-popover');
@@ -1132,7 +1144,8 @@
       });
 
       var cardName = cardEl.dataset.cardName || 'df';
-      var arrangeArg = nextState === 'desc' ? 'dplyr::desc(' + colName + ')' : colName;
+      var escCol = escapeColIdentifier(colName);
+      var arrangeArg = nextState === 'desc' ? 'dplyr::desc(' + escCol + ')' : escCol;
       var arrangeCode = cardName + ' %>%\n  dplyr::arrange(' + arrangeArg + ')';
 
       self.activateDrawerTab('arrange');
@@ -1263,21 +1276,22 @@
 
       btn.classList.add('active');
 
+      var escCol = escapeColIdentifier(colName);
       var condExpr = '';
       if (op === 'contains') {
-        condExpr = 'stringr::str_detect(' + colName + ', "' + val + '")';
+        condExpr = 'stringr::str_detect(' + escCol + ', "' + val + '")';
       } else if (op === 'equals') {
-        condExpr = isNumFilter ? colName + ' == ' + val : colName + ' == "' + val + '"';
+        condExpr = isNumFilter ? escCol + ' == ' + val : escCol + ' == "' + val + '"';
       } else if (op === 'not_equals') {
-        condExpr = isNumFilter ? colName + ' != ' + val : colName + ' != "' + val + '"';
+        condExpr = isNumFilter ? escCol + ' != ' + val : escCol + ' != "' + val + '"';
       } else if (op === 'gt') {
-        condExpr = colName + ' > ' + val;
+        condExpr = escCol + ' > ' + val;
       } else if (op === 'gte') {
-        condExpr = colName + ' >= ' + val;
+        condExpr = escCol + ' >= ' + val;
       } else if (op === 'lt') {
-        condExpr = colName + ' < ' + val;
+        condExpr = escCol + ' < ' + val;
       } else if (op === 'lte') {
-        condExpr = colName + ' <= ' + val;
+        condExpr = escCol + ' <= ' + val;
       }
 
       var filterCode = cardName + ' %>%\n  dplyr::filter(' + condExpr + ')';

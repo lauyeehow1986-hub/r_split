@@ -363,3 +363,29 @@ test_that("inst/rstudio/addins.dcf exists and is a valid DCF file", {
   expect_true(all(nchar(dcf[, "Name"]) > 0))
   expect_true(all(nchar(dcf[, "Description"]) > 0))
 })
+
+test_that("sideview_ui safely handles data frames with list-columns", {
+  df_nested <- data.frame(id = 1:2, label = c("A", "B"))
+  df_nested$nested_vec <- list(c(10, 20), c(30, 40))
+  card <- sv_normalize(df_nested, name = "nested")
+  expect_silent({
+    ui <- sideview_ui(card)
+    ui_str <- as.character(ui)
+  })
+  expect_match(ui_str, "\\[list\\]")
+})
+
+test_that("sideview_server handles non-syntactic column names in sorting and filtering", {
+  df <- data.frame(id = 1:3, check.names = FALSE)
+  df[["Patient Age (years)"]] <- c(45, 52, 38)
+  card <- sv_normalize(df, name = "clinical")
+  shiny::testServer(sideview_server(list(card)), {
+    session$setInputs(column_sorted = list(
+      table = "clinical",
+      column = "Patient Age (years)",
+      direction = "desc"
+    ))
+    msgs <- session$userData$custom_messages
+    expect_match(msgs[[length(msgs)]]$message$code, "dplyr::desc\\(`Patient Age \\(years\\)`\\)")
+  })
+})
