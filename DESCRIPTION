@@ -1,7 +1,10 @@
 Package: sideview
 Title: Multi-Table 2D Infinite Canvas for R
 Version: 0.1.0
-Authors@R: person("sideview", "Authors", email = "author@example.com", role = c("aut", "cre"))
+Authors@R: c(
+    person("Yee How", "Lau", email = "lauyeehow1986@gmail.com.sg", role = c("aut", "cre", "cph")),
+    person("sideview", "contributors", role = "ctb")
+  )
 Description: An interactive 2D infinite canvas for multi-table exploration,
     interactive field mapping, and LLM-assisted tidyverse code generation.
 URL: https://lauyeehow1986-hub.github.io/r_split/, https://github.com/lauyeehow1986-hub/r_split

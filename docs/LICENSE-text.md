@@ -1,3 +1,3 @@
 # License
 
-YEAR: 2026 COPYRIGHT HOLDER: sideview authors
+YEAR: 2026 COPYRIGHT HOLDER: Yee How Lau
