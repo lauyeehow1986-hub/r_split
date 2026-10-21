@@ -586,6 +586,11 @@ function sendToShiny(name, value) {
         '    <p class="sideview-drawer-desc">Connect columns to generate join or mutation pipelines.</p>',
         '    <pre class="sideview-code-block"><code class="sideview-code-text"># Connect two columns to generate pipeline code</code></pre>',
         '  </div>',
+        '  <div class="sideview-tab-pane sideview-discrepancy-pane" data-pane="discrepancy" style="display: none;">',
+        '    <div class="sideview-discrepancy-content">',
+        '      <p class="sideview-drawer-desc">Connect columns between two tables to inspect discrepancies.</p>',
+        '    </div>',
+        '  </div>',
         '  <div class="sideview-tab-pane sideview-chat-pane" data-pane="chat" style="display: none;">',
         '    <div class="sideview-chat-messages">',
         '      <div class="sideview-chat-bubble sideview-chat-assistant">',
@@ -793,12 +798,19 @@ function sendToShiny(name, value) {
       var tabName = tab.dataset.tab;
       var pipelinePane = self.container.querySelector('.sideview-pipeline-pane');
       var chatPane = self.container.querySelector('.sideview-chat-pane');
+      var discPane = self.container.querySelector('.sideview-discrepancy-pane');
       if (tabName === 'chat' || tabName === 'copilot') {
         if (pipelinePane) pipelinePane.style.display = 'none';
+        if (discPane) discPane.style.display = 'none';
         if (chatPane) chatPane.style.display = 'flex';
+      } else if (tabName === 'discrepancy') {
+        if (pipelinePane) pipelinePane.style.display = 'none';
+        if (chatPane) chatPane.style.display = 'none';
+        if (discPane) discPane.style.display = '';
       } else {
         if (pipelinePane) pipelinePane.style.display = '';
         if (chatPane) chatPane.style.display = 'none';
+        if (discPane) discPane.style.display = 'none';
       }
 
       if (tabName === 'discrepancy' && self.connections.length > 0) {
@@ -1774,12 +1786,19 @@ function sendToShiny(name, value) {
     });
     var pipelinePane = this.container.querySelector('.sideview-pipeline-pane');
     var chatPane = this.container.querySelector('.sideview-chat-pane');
+    var discPane = this.container.querySelector('.sideview-discrepancy-pane');
     if (tabName === 'chat' || tabName === 'copilot') {
       if (pipelinePane) pipelinePane.style.display = 'none';
+      if (discPane) discPane.style.display = 'none';
       if (chatPane) chatPane.style.display = 'flex';
+    } else if (tabName === 'discrepancy') {
+      if (pipelinePane) pipelinePane.style.display = 'none';
+      if (chatPane) chatPane.style.display = 'none';
+      if (discPane) discPane.style.display = '';
     } else {
       if (pipelinePane) pipelinePane.style.display = '';
       if (chatPane) chatPane.style.display = 'none';
+      if (discPane) discPane.style.display = 'none';
     }
   };
 
@@ -2117,7 +2136,7 @@ function sendToShiny(name, value) {
       assistantBubble.className = 'sideview-chat-bubble sideview-chat-assistant';
 
       if (data.text) {
-        var textWithoutFences = data.text.replace(/\`\`\`[a-zA-Z]*[\s\S]*?\`\`\`/g, '').trim();
+        var textWithoutFences = data.text.replace(/```(?:\{?[a-zA-Z0-9_,-]*\}?)?[\s\S]*?```/g, '').trim();
         var displayText = textWithoutFences || (data.code ? 'Here is the requested tidyverse transformation:' : data.text);
         var textEl = document.createElement('div');
         textEl.className = 'sideview-chat-bubble-text';
@@ -2138,18 +2157,11 @@ function sendToShiny(name, value) {
         replaceBtn.className = 'sideview-btn sideview-btn-sm sideview-chat-replace-btn';
         replaceBtn.dataset.action = 'chat-replace-pipeline';
         replaceBtn.textContent = 'Replace Pipeline';
-        replaceBtn.addEventListener('click', function () {
-          self.updateDrawerCode(data.code);
-          self.showToast('Pipeline code replaced!', 'success');
-        });
 
         var insertBtn = document.createElement('button');
         insertBtn.className = 'sideview-btn sideview-btn-sm sideview-btn-primary sideview-chat-insert-btn';
         insertBtn.dataset.action = 'chat-insert-editor';
         insertBtn.textContent = 'Insert into Editor';
-        insertBtn.addEventListener('click', function () {
-          sendToShiny('inject_script', { code: data.code });
-        });
 
         actionsEl.appendChild(replaceBtn);
         actionsEl.appendChild(insertBtn);
@@ -2172,9 +2184,22 @@ function sendToShiny(name, value) {
       if (!data) return;
       self.lastDiscrepancy = data;
 
-      var drawerContent = self.container.querySelector('.sideview-drawer-content');
-      var discTab = self.container.querySelector('.sideview-drawer-tab[data-tab="discrepancy"]');
-      if (discTab && discTab.classList.contains('active') && drawerContent) {
+      var discPane = self.container.querySelector('.sideview-discrepancy-pane') ||
+                     self.container.querySelector('#sideview-discrepancy-content');
+      var discContent = discPane ? (discPane.querySelector('.sideview-discrepancy-content') || discPane) : null;
+      if (!discContent) {
+        var drawerContent = self.container.querySelector('.sideview-drawer-content');
+        if (drawerContent) {
+          discPane = document.createElement('div');
+          discPane.className = 'sideview-tab-pane sideview-discrepancy-pane';
+          discPane.dataset.pane = 'discrepancy';
+          discPane.style.display = 'none';
+          drawerContent.appendChild(discPane);
+          discContent = discPane;
+        }
+      }
+
+      if (discContent) {
         var exactCnt = (data.exact_matches || []).length;
         var fuzzyCnt = (data.fuzzy_matches || []).length;
         var diffCnt = (data.only_in_x || []).length + (data.only_in_y || []).length;
@@ -2190,7 +2215,7 @@ function sendToShiny(name, value) {
         }
         discHtml.push('</div>');
         discHtml.push('<pre class="sideview-code-block"><code class="sideview-code-text">' + (self.generatedCode || '# Discrepancy checked') + '</code></pre>');
-        drawerContent.innerHTML = discHtml.join('');
+        discContent.innerHTML = discHtml.join('');
       }
 
       var targetCards = [];

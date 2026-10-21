@@ -331,6 +331,10 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
       session$userData$copilot_history <- list()
     }
     history <- session$userData$copilot_history
+    if (length(history) > 20L) {
+      history <- utils::tail(history, 20L)
+      session$userData$copilot_history <- history
+    }
 
     current_code <- if (is.list(evt)) evt$current_code %||% evt$code %||% NULL else NULL
     if (is.null(current_code) || !nzchar(trimws(current_code))) {
@@ -362,7 +366,8 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
       paste0("# Copilot request failed: ", conditionMessage(e))
     })
 
-    extracted_code <- sv_extract_code(reply_text)
+    has_code_fence <- grepl("```", reply_text, fixed = TRUE)
+    extracted_code <- if (has_code_fence) sv_extract_code(reply_text) else ""
 
     # Append turns to session history
     session$userData$copilot_history[[length(session$userData$copilot_history) + 1L]] <- list(
@@ -374,6 +379,10 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
       content = reply_text
     )
 
+    if (length(session$userData$copilot_history) > 20L) {
+      session$userData$copilot_history <- utils::tail(session$userData$copilot_history, 20L)
+    }
+
     # Dispatch custom messages
     dispatch_message("sideview_copilot_reply", list(
       text = reply_text,
@@ -381,7 +390,7 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
       user_message = user_msg
     ))
 
-    if (!is.null(extracted_code) && nzchar(trimws(extracted_code))) {
+    if (has_code_fence && !is.null(extracted_code) && nzchar(trimws(extracted_code))) {
       dispatch_message("sideview_code_update", list(code = extracted_code))
     }
   }, ignoreInit = FALSE)

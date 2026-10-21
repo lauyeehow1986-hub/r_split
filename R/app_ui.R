@@ -413,6 +413,15 @@ sideview_ui <- function(cards = list(), title = "Sideview Canvas") {
         htmltools::tags$pre(class = "sideview-code-block", htmltools::tags$code(class = "sideview-code-text", "# Connect two columns to generate pipeline code"))
       ),
       htmltools::tags$div(
+        class = "sideview-tab-pane sideview-discrepancy-pane",
+        `data-pane` = "discrepancy",
+        style = "display: none;",
+        htmltools::tags$div(
+          class = "sideview-discrepancy-content",
+          htmltools::tags$p(class = "sideview-drawer-desc", "Connect columns between two tables to inspect discrepancies.")
+        )
+      ),
+      htmltools::tags$div(
         class = "sideview-tab-pane sideview-chat-pane",
         `data-pane` = "chat",
         style = "display: none;",

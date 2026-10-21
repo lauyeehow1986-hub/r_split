@@ -437,3 +437,48 @@ test_that("sv_call_llm supports multi-turn chat prompt with mock", {
     expect_true(length(sent_msgs) >= 3L)
   })
 })
+
+test_that("sv_extract_code correctly distinguishes code fences from conversational text", {
+  # Text with standard R fence
+  r_block <- "Here is the transformation:\n```r\ndf |> filter(age > 30)\n```\nHope that helps!"
+  expect_equal(sv_extract_code(r_block), "df |> filter(age > 30)")
+
+  # Text with knitr chunk fence
+  knitr_block <- "```{r my-chunk, echo=TRUE}\ndf |> mutate(y = x * 2)\n```"
+  expect_equal(sv_extract_code(knitr_block), "df |> mutate(y = x * 2)")
+
+  # Text with generic fence
+  gen_block <- "```\ndf |> arrange(desc(score))\n```"
+  expect_equal(sv_extract_code(gen_block), "df |> arrange(desc(score))")
+
+  # Conversational text without code fences
+  plain_text <- "I see two tables in your workspace: patients and labs. How can I help?"
+  expect_equal(sv_extract_code(plain_text), plain_text)
+
+  # Error string without code fences
+  err_text <- "# Copilot request failed: Connection refused"
+  expect_equal(sv_extract_code(err_text), err_text)
+})
+
+test_that("sv_build_chat_prompt formats conversation history with arbitrary turn lengths", {
+  # Create 25 turns of conversation history
+  hist <- lapply(seq_len(25), function(i) {
+    list(
+      role = if (i %% 2 == 1) "user" else "assistant",
+      content = paste("Turn content", i)
+    )
+  })
+
+  # Pass last 20 capped turns
+  capped_hist <- utils::tail(hist, 20L)
+  p <- sv_build_chat_prompt("Current question", history = capped_hist)
+
+  expect_equal(length(p$history), 20L)
+  expect_equal(length(p$messages), 22L) # system + 20 history + current user message
+  expect_equal(p$messages[[1]]$role, "system")
+  expect_equal(p$messages[[2]]$content, "Turn content 6")
+  expect_equal(p$messages[[21]]$content, "Turn content 25")
+  expect_equal(p$messages[[22]]$role, "user")
+  expect_match(p$messages[[22]]$content, "Current question")
+})
+

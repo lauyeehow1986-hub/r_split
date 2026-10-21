@@ -616,3 +616,63 @@ test_that("sideview_server handles send_copilot_chat multi-turn conversational e
     expect_true(grepl("filter\\(test_val > 120\\)", reply_msgs2[[2]]$message$code))
   })
 })
+
+test_that("send_copilot_chat with conversational reply (no code fences) does not dispatch sideview_code_update", {
+  df1 <- data.frame(id = 1:3, val = c(10, 20, 30))
+  cards <- list(sv_normalize(df1, name = "t1"))
+
+  fake_chat_llm <- function(prompt, ...) {
+    "Hello! I am Sideview Copilot. What transformation would you like to perform on table t1?"
+  }
+
+  shiny::testServer(sideview_server(cards, llm_fn = fake_chat_llm), {
+    session$setInputs(send_copilot_chat = list(
+      message = "Hello Copilot",
+      current_code = "t1 %>% dplyr::filter(val > 10)"
+    ))
+
+    msgs <- session$userData$custom_messages
+    reply_msgs <- Filter(function(m) m$type == "sideview_copilot_reply", msgs)
+    expect_equal(length(reply_msgs), 1L)
+    expect_equal(reply_msgs[[1]]$message$code, "")
+    expect_match(reply_msgs[[1]]$message$text, "Hello! I am Sideview Copilot")
+
+    # Verify sideview_code_update was NOT dispatched so canvas pipeline is preserved
+    code_update_msgs <- Filter(function(m) m$type == "sideview_code_update", msgs)
+    expect_equal(length(code_update_msgs), 0L)
+  })
+})
+
+test_that("send_copilot_chat caps session copilot_history at sliding window limit (20 turns)", {
+  df1 <- data.frame(id = 1:3)
+  cards <- list(sv_normalize(df1, name = "t1"))
+
+  turn_count <- 0L
+  fake_chat_llm <- function(prompt, ...) {
+    turn_count <<- turn_count + 1L
+    paste0("Assistant reply turn ", turn_count)
+  }
+
+  shiny::testServer(sideview_server(cards, llm_fn = fake_chat_llm), {
+    # Simulate 15 user-assistant exchanges (30 turns total)
+    for (i in seq_len(15)) {
+      session$setInputs(send_copilot_chat = list(
+        message = paste("User message", i),
+        current_code = ""
+      ))
+    }
+
+    history <- session$userData$copilot_history
+    expect_equal(length(history), 20L)
+    # The last turn should be assistant reply turn 15
+    expect_equal(history[[20L]]$role, "assistant")
+    expect_equal(history[[20L]]$content, "Assistant reply turn 15")
+    # The second to last turn should be user message 15
+    expect_equal(history[[19L]]$role, "user")
+    expect_equal(history[[19L]]$content, "User message 15")
+    # The first element in history should be user message 6 (10 pairs retained: turns 6 through 15)
+    expect_equal(history[[1L]]$role, "user")
+    expect_equal(history[[1L]]$content, "User message 6")
+  })
+})
+
