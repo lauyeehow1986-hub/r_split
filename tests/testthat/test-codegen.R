@@ -69,6 +69,40 @@ test_that("sv_code_join generates valid join code across join types and formats 
   expect_error(sv_code_join("a", "b", "id", "id", join_type = "cross_product"), "Unsupported join_type")
 })
 
+test_that("sv_code_join supports composite multi-key joins", {
+  code <- sv_code_join("patients", "visits", 
+                       col1 = c("patient_id", "site_id"), 
+                       col2 = c("patient_id", "hospital_id"), 
+                       pipe = TRUE)
+  expect_match(code, 'patients\\s*%>%\\s*dplyr::left_join\\(visits,\\s*by\\s*=\\s*c\\("patient_id"\\s*=\\s*"patient_id",\\s*"site_id"\\s*=\\s*"hospital_id"\\)\\)')
+  expect_silent(parse(text = code))
+
+  # Identical vector keys
+  code_ident <- sv_code_join("df1", "df2", col1 = c("a", "b"), col2 = c("a", "b"), pipe = TRUE)
+  expect_equal(code_ident, 'df1 %>% dplyr::left_join(df2, by = c("a", "b"))')
+  expect_silent(parse(text = code_ident))
+
+  # col2 defaults to col1 for vector
+  code_default <- sv_code_join("df1", "df2", col1 = c("a", "b"), pipe = TRUE)
+  expect_equal(code_default, 'df1 %>% dplyr::left_join(df2, by = c("a", "b"))')
+  expect_silent(parse(text = code_default))
+
+  # List representation of multi-keys (as passed from Shiny WebSocket JSON)
+  code_list <- sv_code_join("df1", "df2", col1 = list("a", "b"), col2 = list("x", "y"), pipe = TRUE)
+  expect_equal(code_list, 'df1 %>% dplyr::left_join(df2, by = c("a" = "x", "b" = "y"))')
+  expect_silent(parse(text = code_list))
+
+  code_list_same <- sv_code_join("df1", "df2", col1 = list("a", "b"), col2 = list("a", "b"), pipe = TRUE)
+  expect_equal(code_list_same, 'df1 %>% dplyr::left_join(df2, by = c("a", "b"))')
+  expect_silent(parse(text = code_list_same))
+
+  # Backtick-wrapped identifiers are stripped inside by = c("col" = "col")
+  code_backtick <- sv_code_join("df1", "df2", col1 = c("`col a`", "`col b`"), col2 = c("`col a`", "`col c`"), pipe = TRUE)
+  expect_equal(code_backtick, 'df1 %>% dplyr::left_join(df2, by = c("col a" = "col a", "col b" = "col c"))')
+  expect_silent(parse(text = code_backtick))
+})
+
+
 test_that("sv_code_mutate generates valid mutate code", {
   # Single mutation
   code1 <- sv_code_mutate("df", "total", "price * quantity")

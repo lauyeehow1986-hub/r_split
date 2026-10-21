@@ -71,14 +71,28 @@ sv_code_join <- function(df1, df2, col1, col2 = col1, join_type = "left", pipe =
     stop(sprintf("Unsupported join_type: '%s'. Must be one of: %s", join_type, paste(valid_joins, collapse = ", ")))
   }
   fn_name <- paste0("dplyr::", jt, "_join")
-  
+
+  if (is.list(col1)) col1 <- unlist(col1, use.names = FALSE)
+  if (missing(col2) || is.null(col2)) {
+    col2 <- col1
+  } else if (is.list(col2)) {
+    col2 <- unlist(col2, use.names = FALSE)
+  }
+
+  col1 <- as.character(col1)
+  col2 <- as.character(col2)
+
+  # Strip outer backticks if present
+  col1 <- gsub("^`|`$", "", col1)
+  col2 <- gsub("^`|`$", "", col2)
+
   if (length(col1) == 0 || length(col2) == 0) {
     stop("Join columns (`col1` and `col2`) must not be empty.")
   }
   if (length(col1) != length(col2)) {
     stop("`col1` and `col2` must have the same length.")
   }
-  
+
   # Format by argument
   is_same <- identical(col1, col2) || (!anyNA(col1) && !anyNA(col2) && all(col1 == col2))
   if (is_same) {
@@ -91,14 +105,23 @@ sv_code_join <- function(df1, df2, col1, col2 = col1, join_type = "left", pipe =
     pairs <- sprintf('%s = %s', vapply(col1, deparse1, character(1)), vapply(col2, deparse1, character(1)))
     by_str <- sprintf('by = c(%s)', paste(pairs, collapse = ", "))
   }
-  
-  esc_df1 <- sv_escape_ident(df1)
+
+  has_df1 <- !is.null(df1) && length(df1) > 0 && nzchar(df1)
+  esc_df1 <- if (has_df1) sv_escape_ident(df1) else NULL
   esc_df2 <- sv_escape_ident(df2)
-  
+
   if (pipe) {
-    sprintf("%s %%>%% %s(%s, %s)", esc_df1, fn_name, esc_df2, by_str)
+    if (has_df1) {
+      sprintf("%s %%>%% %s(%s, %s)", esc_df1, fn_name, esc_df2, by_str)
+    } else {
+      sprintf("%s(%s, %s)", fn_name, esc_df2, by_str)
+    }
   } else {
-    sprintf("%s(%s, %s, %s)", fn_name, esc_df1, esc_df2, by_str)
+    if (has_df1) {
+      sprintf("%s(%s, %s, %s)", fn_name, esc_df1, esc_df2, by_str)
+    } else {
+      sprintf("%s(%s, %s)", fn_name, esc_df2, by_str)
+    }
   }
 }
 

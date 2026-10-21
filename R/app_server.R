@@ -63,11 +63,43 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
     evt <- input$column_mapped
     if (is.null(evt)) return()
 
+    # Relational chaining: multiple joins passed as a sequence
+    joins <- evt$joins
+    if (!is.null(joins) && is.list(joins) && length(joins) > 0) {
+      code <- tryCatch({
+        pieces <- character(length(joins))
+        for (i in seq_along(joins)) {
+          j <- joins[[i]]
+          j_from <- j$from_table %||% j$table1
+          j_to <- j$to_table %||% j$table2
+          j_col1 <- unlist(j$from_cols %||% j$from_col %||% j$col1, use.names = FALSE)
+          j_col2 <- unlist(j$to_cols %||% j$to_col %||% j$col2, use.names = FALSE)
+          if (is.null(j_col2)) j_col2 <- j_col1
+          j_type <- j$join_type %||% "left_join"
+          if (i == 1) {
+            pieces[i] <- sv_code_join(j_from, j_to, j_col1, j_col2, join_type = j_type, pipe = TRUE)
+          } else {
+            pieces[i] <- sv_code_join(NULL, j_to, j_col1, j_col2, join_type = j_type, pipe = TRUE)
+          }
+        }
+        paste(pieces, collapse = " %>%
+  ")
+      }, error = function(e) {
+        sprintf("# Error generating join code: %s", conditionMessage(e))
+      })
+      dispatch_message("sideview_code_update", list(code = code))
+      return()
+    }
+
     from_tbl <- evt$from_table %||% evt$table1
-    from_col <- evt$from_col %||% evt$col1
+    from_col <- evt$from_cols %||% evt$from_col %||% evt$col1 %||% evt$cols1
     to_tbl <- evt$to_table %||% evt$table2
-    to_col <- evt$to_col %||% evt$col2
+    to_col <- evt$to_cols %||% evt$to_col %||% evt$col2 %||% evt$cols2
     join_type <- evt$join_type %||% "left_join"
+
+    if (!is.null(from_col)) from_col <- unlist(from_col, use.names = FALSE)
+    if (!is.null(to_col)) to_col <- unlist(to_col, use.names = FALSE)
+    if (is.null(to_col)) to_col <- from_col
 
     code <- tryCatch({
       sv_code_join(
