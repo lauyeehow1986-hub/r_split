@@ -23,6 +23,8 @@ Imports:
     rstudioapi
 Suggests:
     testthat (>= 3.0.0),
+    arrow,
+    duckdb,
     gt,
     flextable,
     knitr,

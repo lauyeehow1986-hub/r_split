@@ -134,3 +134,163 @@ test_that("sv_normalize handles matrix and edge cases gracefully", {
   # print.sideview_card output
   expect_output(print(card_mat), "<sideview_card \\[grid\\]>")
 })
+
+test_that("sv_normalize handles Arrow objects lazily with soft dependency", {
+  # Mock arrow_table S3 class
+  mock_arrow <- structure(
+    list(
+      schema = list(
+        names = c("id", "value"),
+        fields = list(
+          id = list(type = list(name = "int32")),
+          value = list(type = list(name = "double"))
+        )
+      ),
+      data = data.frame(id = 1:10, value = rnorm(10)),
+      dims = c(1000L, 2L)
+    ),
+    class = c("arrow_table", "ArrowTabular")
+  )
+
+  # Check missing dependency guard
+  orig_req_arrow <- base::requireNamespace
+  testthat::with_mocked_bindings(
+    expect_error(
+      sv_normalize(mock_arrow),
+      "Package 'arrow' must be installed"
+    ),
+    requireNamespace = function(pkg, ...) if (identical(pkg, "arrow")) FALSE else orig_req_arrow(pkg, ...),
+    .package = "base"
+  )
+
+  # Normalization with mock Arrow table
+  card_mock <- sv_normalize(mock_arrow, name = "mock_arrow_tbl")
+  expect_s3_class(card_mock, "sideview_card")
+  expect_equal(card_mock$name, "mock_arrow_tbl")
+  expect_equal(card_mock$type, "grid")
+  expect_true(card_mock$is_lazy)
+  expect_equal(card_mock$lazy_source, "arrow")
+  expect_equal(card_mock$dims, c(1000L, 2L))
+  expect_equal(card_mock$col_types, c(id = "int32", value = "double"))
+  expect_equal(nrow(card_mock$data), 10)
+
+  # If arrow package is installed, test with real Arrow objects
+  skip_if_not_installed("arrow")
+
+  # arrow::arrow_table
+  tab <- arrow::arrow_table(mtcars)
+  card_tab <- sv_normalize(tab, name = "arrow_mtcars")
+  expect_s3_class(card_tab, "sideview_card")
+  expect_true(card_tab$is_lazy)
+  expect_equal(card_tab$lazy_source, "arrow")
+  expect_equal(card_tab$dims, c(32L, 11L))
+  expect_equal(names(card_tab$col_types), colnames(mtcars))
+  expect_equal(nrow(card_tab$data), 32)
+
+  # arrow::record_batch
+  rb <- arrow::record_batch(mtcars)
+  card_rb <- sv_normalize(rb, name = "arrow_rb")
+  expect_s3_class(card_rb, "sideview_card")
+  expect_true(card_rb$is_lazy)
+  expect_equal(card_rb$dims, c(32L, 11L))
+
+  # arrow::Dataset
+  tmp_parquet <- tempfile(fileext = ".parquet")
+  on.exit(unlink(tmp_parquet), add = TRUE)
+  arrow::write_parquet(mtcars, tmp_parquet)
+  ds <- arrow::open_dataset(tmp_parquet)
+  card_ds <- sv_normalize(ds, name = "arrow_ds")
+  expect_s3_class(card_ds, "sideview_card")
+  expect_true(card_ds$is_lazy)
+  expect_equal(card_ds$dims, c(32L, 11L))
+  expect_equal(names(card_ds$col_types), colnames(mtcars))
+})
+
+test_that("sv_normalize handles DuckDB objects lazily with soft dependency", {
+  # Mock tbl_duckdb_connection S3 class
+  mock_duck <- structure(
+    list(
+      schema = list(col_a = "integer", col_b = "character"),
+      data = data.frame(col_a = 1:5, col_b = letters[1:5], stringsAsFactors = FALSE),
+      dims = c(50000L, 2L)
+    ),
+    class = "tbl_duckdb_connection"
+  )
+
+  # Check missing dependency guard
+  orig_req_duck <- base::requireNamespace
+  testthat::with_mocked_bindings(
+    expect_error(
+      sv_normalize(mock_duck),
+      "Package 'duckdb' must be installed"
+    ),
+    requireNamespace = function(pkg, ...) if (identical(pkg, "duckdb")) FALSE else orig_req_duck(pkg, ...),
+    .package = "base"
+  )
+
+  # Normalization with mock DuckDB tbl
+  card_mock <- sv_normalize(mock_duck, name = "mock_duck_tbl")
+  expect_s3_class(card_mock, "sideview_card")
+  expect_equal(card_mock$name, "mock_duck_tbl")
+  expect_equal(card_mock$type, "grid")
+  expect_true(card_mock$is_lazy)
+  expect_equal(card_mock$lazy_source, "duckdb")
+  expect_equal(card_mock$dims, c(50000L, 2L))
+  expect_equal(card_mock$col_types, c(col_a = "integer", col_b = "character"))
+  expect_equal(nrow(card_mock$data), 5)
+
+  # Mock duckdb_connection S3 class
+  mock_con <- structure(
+    list(
+      schema = list(x = "numeric"),
+      data = data.frame(x = 1:10),
+      dims = c(10L, 1L)
+    ),
+    class = "duckdb_connection"
+  )
+  card_mock_con <- sv_normalize(mock_con, name = "mock_con")
+  expect_s3_class(card_mock_con, "sideview_card")
+  expect_true(card_mock_con$is_lazy)
+  expect_equal(card_mock_con$lazy_source, "duckdb")
+
+  # If duckdb and DBI are installed, test with real DuckDB instance
+  skip_if_not_installed("duckdb")
+  skip_if_not_installed("DBI")
+
+  con <- DBI::dbConnect(duckdb::duckdb())
+  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+  DBI::dbWriteTable(con, "duck_mtcars", mtcars)
+
+  # tbl_duckdb_connection
+  tbl_obj <- dplyr::tbl(con, "duck_mtcars")
+  card_tbl <- sv_normalize(tbl_obj, name = "duck_tbl_card")
+  expect_s3_class(card_tbl, "sideview_card")
+  expect_true(card_tbl$is_lazy)
+  expect_equal(card_tbl$lazy_source, "duckdb")
+  expect_equal(card_tbl$dims, c(32L, 11L))
+  expect_equal(names(card_tbl$col_types), colnames(mtcars))
+  expect_equal(nrow(card_tbl$data), 32)
+
+  # duckdb_connection with table lookup
+  card_con <- sv_normalize(con, name = "duck_mtcars")
+  expect_s3_class(card_con, "sideview_card")
+  expect_true(card_con$is_lazy)
+  expect_equal(card_con$lazy_source, "duckdb")
+  expect_equal(card_con$dims, c(32L, 11L))
+})
+
+test_that("print.sideview_card displays lazy badge for lazy cards", {
+  lazy_card <- new_sideview_card(
+    id = "card_lazy_test",
+    name = "lazy_dataset",
+    type = "grid",
+    data = head(mtcars, 10),
+    dims = c(1000000L, 11L),
+    is_lazy = TRUE,
+    lazy_source = "arrow"
+  )
+
+  expect_true(lazy_card$is_lazy)
+  expect_output(print(lazy_card), "\\[grid - lazy\\]")
+  expect_output(print(lazy_card), "Lazy: TRUE")
+})
