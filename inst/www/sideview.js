@@ -481,6 +481,8 @@ function sendToShiny(name, value) {
     this.isSyncingScroll = false;
     this.panzoom = null;
     this.generatedCode = '';
+    this.suggestedConnections = [];
+    this.lastDiscrepancy = null;
 
     this.initDOM();
     this.initPanzoom();
@@ -539,6 +541,7 @@ function sendToShiny(name, value) {
         '<button class="sideview-btn" data-action="zoom-reset" title="Reset View">100%</button>',
         '<span class="sideview-toolbar-divider"></span>',
         '<button class="sideview-btn active" data-action="toggle-snap" title="Snap to Edge">Snap</button>',
+        '<button class="sideview-btn" data-action="suggest-mappings" title="Suggest Mappings across tables">Auto Map</button>',
         '<button class="sideview-btn" data-action="toggle-drawer" title="Toggle Drawer">Drawer</button>'
       ].join('');
       this.container.appendChild(toolbar);
@@ -709,6 +712,19 @@ function sendToShiny(name, value) {
         }
       } else if (action === 'clear-operation') {
         self.clearOperations();
+      } else if (action === 'suggest-mappings') {
+        self.requestSuggestedMappings();
+      } else if (action === 'apply-auto-clean') {
+        var disc = self.lastDiscrepancy || {};
+        var lastConn = self.connections.length > 0 ? self.connections[self.connections.length - 1] : null;
+        sendToShiny('apply_auto_clean', {
+          discrepancy: disc,
+          from_table: disc.from_table || (lastConn ? lastConn.fromTable : 'df'),
+          to_table: disc.to_table || (lastConn ? lastConn.toTable : null),
+          from_col: disc.from_col || (lastConn ? lastConn.fromCol : 'status'),
+          to_col: disc.to_col || (lastConn ? lastConn.toCol : null)
+        });
+        self.showToast('Applying suggested cleanups...', 'info');
       }
     });
 
@@ -716,6 +732,7 @@ function sendToShiny(name, value) {
     this.container.addEventListener('click', function (e) {
       var path = e.target.closest('.sideview-connector-path');
       if (!path) return;
+      if (path.classList.contains('sideview-spline-suggested')) return;
       e.stopPropagation();
       var connId = path.dataset.connId;
       if (connId) {
@@ -1303,6 +1320,141 @@ function sendToShiny(name, value) {
   /**
    * Field click-to-connect field mapping with SVG bezier curves
    */
+  
+  SideviewEngine.prototype.findPortElement = function (tableName, colName) {
+    if (!tableName || !colName) return null;
+    var card = this.container.querySelector('[data-card-name="' + tableName + '"]') ||
+               this.container.querySelector('[data-card-id="' + tableName + '"]');
+    if (!card) return null;
+    return card.querySelector('.sideview-col-port[data-col-name="' + colName + '"]');
+  };
+
+  SideviewEngine.prototype.requestSuggestedMappings = function (minConfidence) {
+    sendToShiny('request_suggested_mappings', {
+      min_confidence: typeof minConfidence === 'number' ? minConfidence : 0.70
+    });
+  };
+
+  SideviewEngine.prototype.clearSuggestedSplines = function () {
+    if (this.suggestedConnections && this.suggestedConnections.length > 0) {
+      this.suggestedConnections.forEach(function (conn) {
+        if (conn.path && conn.path.parentNode) {
+          conn.path.parentNode.removeChild(conn.path);
+        }
+      });
+      this.suggestedConnections = [];
+    }
+    if (this.svg) {
+      var oldSuggested = this.svg.querySelectorAll('.sideview-spline-suggested');
+      for (var i = 0; i < oldSuggested.length; i++) {
+        if (oldSuggested[i].parentNode) oldSuggested[i].parentNode.removeChild(oldSuggested[i]);
+      }
+    }
+  };
+
+  SideviewEngine.prototype.renderSuggestedSplines = function (suggestions) {
+    var self = this;
+    this.clearSuggestedSplines();
+    if (!suggestions) return;
+
+    var candidates = [];
+    if (Array.isArray(suggestions)) {
+      candidates = suggestions;
+    } else if (suggestions && Array.isArray(suggestions.candidates)) {
+      candidates = suggestions.candidates;
+    } else if (suggestions && Array.isArray(suggestions.data)) {
+      candidates = suggestions.data;
+    }
+
+    if (!candidates || candidates.length === 0) return;
+
+    candidates.forEach(function (c) {
+      var fromTable = c.from_table || c.fromTable || c.table1;
+      var fromCol = c.from_col || c.fromCol || c.col1;
+      var toTable = c.to_table || c.toTable || c.table2;
+      var toCol = c.to_col || c.toCol || c.col2;
+      var confidence = c.confidence !== undefined ? c.confidence : 0.8;
+      var reason = c.reason || '';
+
+      if (!fromTable || !fromCol || !toTable || !toCol) return;
+
+      var alreadyConnected = self.connections.some(function (conn) {
+        return (conn.fromTable === fromTable && conn.fromCol === fromCol &&
+                conn.toTable === toTable && conn.toCol === toCol) ||
+               (conn.fromTable === toTable && conn.fromCol === toCol &&
+                conn.toTable === fromTable && conn.toCol === fromCol);
+      });
+      if (alreadyConnected) return;
+
+      var p1 = self.findPortElement(fromTable, fromCol);
+      var p2 = self.findPortElement(toTable, toCol);
+      if (!p1 || !p2) return;
+
+      var card1 = p1.closest('.sideview-card');
+      var card2 = p2.closest('.sideview-card');
+      var card1Id = card1 ? card1.dataset.cardId : fromTable;
+      var card2Id = card2 ? card2.dataset.cardId : toTable;
+
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('class', 'sideview-connector-path sideview-spline-suggested');
+      path.dataset.suggested = 'true';
+      path.dataset.fromTable = fromTable;
+      path.dataset.fromCol = fromCol;
+      path.dataset.toTable = toTable;
+      path.dataset.toCol = toCol;
+      path.dataset.confidence = String(confidence);
+
+      var confPct = Math.round(confidence * 100);
+      var titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      titleEl.textContent = 'Suggested join: ' + fromTable + '.' + fromCol + ' ↔ ' + toTable + '.' + toCol +
+        ' (' + confPct + '% confidence)' + (reason ? ' - ' + reason : '') + '\nClick to accept';
+      path.appendChild(titleEl);
+
+      path.addEventListener('click', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        if (path.parentNode) {
+          path.parentNode.removeChild(path);
+        }
+        var sIdx = self.suggestedConnections.findIndex(function (s) { return s.path === path; });
+        if (sIdx !== -1) {
+          self.suggestedConnections.splice(sIdx, 1);
+        }
+
+        self.addConnection({
+          fromCard: card1Id,
+          fromTable: fromTable,
+          fromCol: fromCol,
+          fromElement: p1,
+          toCard: card2Id,
+          toTable: toTable,
+          toCol: toCol,
+          toElement: p2,
+          type: 'left_join'
+        });
+
+        self.showToast('Accepted suggested mapping: ' + fromCol + ' ↔ ' + toCol + ' (' + confPct + '%)', 'success');
+      });
+
+      self.svg.appendChild(path);
+
+      self.suggestedConnections.push({
+        path: path,
+        fromTable: fromTable,
+        fromCol: fromCol,
+        fromElement: p1,
+        toTable: toTable,
+        toCol: toCol,
+        toElement: p2,
+        confidence: confidence,
+        reason: reason
+      });
+    });
+
+    self.updateConnectors();
+  };
+
   SideviewEngine.prototype.addConnection = function (connData) {
     var self = this;
     var connId = 'conn_' + Date.now();
@@ -1860,9 +2012,38 @@ function sendToShiny(name, value) {
       }
     });
 
+    // Suggested mappings from server
+    global.Shiny.addCustomMessageHandler('sideview_suggested_mappings', function (data) {
+      if (data) {
+        self.renderSuggestedSplines(data);
+      }
+    });
+
     // Discrepancy report update
     global.Shiny.addCustomMessageHandler('sideview_discrepancies', function (data) {
       if (!data) return;
+      self.lastDiscrepancy = data;
+
+      var drawerContent = self.container.querySelector('.sideview-drawer-content');
+      var discTab = self.container.querySelector('.sideview-drawer-tab[data-tab="discrepancy"]');
+      if (discTab && discTab.classList.contains('active') && drawerContent) {
+        var exactCnt = (data.exact_matches || []).length;
+        var fuzzyCnt = (data.fuzzy_matches || []).length;
+        var diffCnt = (data.only_in_x || []).length + (data.only_in_y || []).length;
+        var discHtml = [
+          '<div class="sideview-discrepancy-card">',
+          '  <div class="sideview-discrepancy-summary">',
+          '    <span>' + (data.from_table || 'Table 1') + ' ↔ ' + (data.to_table || 'Table 2') + '</span>',
+          '    <span>' + exactCnt + ' matched · ' + fuzzyCnt + ' fuzzy · ' + diffCnt + ' diff</span>',
+          '  </div>'
+        ];
+        if (fuzzyCnt > 0 || (data.only_in_x && data.only_in_x.length > 0)) {
+          discHtml.push('  <button class="sideview-btn sideview-btn-auto-clean" data-action="apply-auto-clean">Apply Suggested Cleanups</button>');
+        }
+        discHtml.push('</div>');
+        discHtml.push('<pre class="sideview-code-block"><code class="sideview-code-text">' + (self.generatedCode || '# Discrepancy checked') + '</code></pre>');
+        drawerContent.innerHTML = discHtml.join('');
+      }
 
       var targetCards = [];
       if (data.from_table) {

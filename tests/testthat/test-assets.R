@@ -320,3 +320,37 @@ test_that("VirtualTable JavaScript engine executes 100k row virtualization corre
               info = paste("VirtualTable Node execution error:", paste(status, collapse = "\n")))
   expect_match(paste(status, collapse = "\n"), "SUCCESS")
 })
+
+test_that("sideview.js and sideview.css support suggested splines and auto-cleanup crosswalk UI", {
+  js <- read_asset("sideview.js")
+  css <- read_asset("sideview.css")
+
+  # CSS assertions for animated suggested splines
+  expect_match(css, "\\.sideview-spline-suggested", info = "sideview.css must style .sideview-spline-suggested")
+  expect_match(css, "stroke-dasharray", info = "suggested spline must use dashed stroke")
+  expect_match(css, "dashMove", info = "suggested spline must reference dashMove animation")
+  expect_match(css, "@keyframes\\s+dashMove", info = "sideview.css must define @keyframes dashMove")
+
+  # CSS assertions for suggested tooltip and auto-clean button
+  expect_match(css, "\\.sideview-btn-auto-clean|apply-auto-clean",
+               info = "sideview.css must style auto-clean button")
+
+  # JS assertions for renderSuggestedSplines and handlers
+  expect_match(js, "renderSuggestedSplines",
+               info = "sideview.js must define renderSuggestedSplines on SideviewEngine")
+  expect_match(js, "sideview_suggested_mappings",
+               info = "sideview.js must listen for sideview_suggested_mappings custom message")
+  expect_match(js, "apply_auto_clean",
+               info = "sideview.js must send apply_auto_clean message to Shiny")
+
+  # JavaScript syntax check with Node
+  node_path <- Sys.which("node")
+  if (nzchar(node_path)) {
+    js_path <- find_asset("sideview.js")
+    status <- system2(node_path, c("-c", shQuote(js_path)), stdout = TRUE, stderr = TRUE)
+    attr_status <- attr(status, "status")
+    expect_true(is.null(attr_status) || attr_status == 0,
+                info = paste("sideview.js syntax error:", paste(status, collapse = "\n")))
+  }
+
+})

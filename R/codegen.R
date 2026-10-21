@@ -41,7 +41,7 @@ sv_code_rename <- function(df_name, old_col, new_col, pipe = FALSE) {
   args <- paste(sprintf("%s = %s", esc_new, esc_old), collapse = ", ")
   
   if (pipe) {
-    esc_df <- sv_escape_ident(df_name)
+    esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
     sprintf("%s %%>%% dplyr::rename(%s)", esc_df, args)
   } else {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
@@ -145,8 +145,8 @@ sv_code_mutate <- function(df_name, new_col, expr, pipe = FALSE) {
   args <- paste(sprintf("%s = %s", esc_cols, expr), collapse = ", ")
   
   if (pipe) {
-    esc_df <- sv_escape_ident(df_name)
-    sprintf("%s %%>%% dplyr::mutate(%s)", esc_df, args)
+    esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
+    if (is.null(esc_df)) sprintf("dplyr::mutate(%s)", args) else sprintf("%s %%>%% dplyr::mutate(%s)", esc_df, args)
   } else {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
     if (is.null(esc_df)) {
@@ -167,7 +167,7 @@ sv_code_mutate <- function(df_name, new_col, expr, pipe = FALSE) {
 sv_code_filter <- function(df_name, condition, pipe = FALSE) {
   args <- paste(condition, collapse = ", ")
   if (pipe) {
-    esc_df <- sv_escape_ident(df_name)
+    esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
     sprintf("%s %%>%% dplyr::filter(%s)", esc_df, args)
   } else {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
@@ -206,7 +206,7 @@ sv_code_arrange <- function(df_name, col, desc = FALSE, pipe = FALSE) {
   args <- paste(col_terms, collapse = ', ')
   
   if (pipe) {
-    esc_df <- sv_escape_ident(df_name)
+    esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
     sprintf("%s %%>%% dplyr::arrange(%s)", esc_df, args)
   } else {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
@@ -229,7 +229,7 @@ sv_code_select <- function(df_name, cols, pipe = FALSE) {
   esc_cols <- sv_escape_ident(cols)
   args <- paste(esc_cols, collapse = ", ")
   if (pipe) {
-    esc_df <- sv_escape_ident(df_name)
+    esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
     sprintf("%s %%>%% dplyr::select(%s)", esc_df, args)
   } else {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
@@ -667,3 +667,144 @@ sv_code_group_summarize <- function(df_name = NULL, group_cols, summary_exprs, p
   }
 }
 
+
+#' Generate tidyverse Code for Automatic Discrepancy Cleaning and Crosswalks
+#'
+#' Inspects discrepancy detection output or pairwise column discrepancies (exact matches,
+#' fuzzy near-matches, and missing levels), automatically synthesizing clean recoding rules
+#' using \code{dplyr::case_match()}. Handles casing differences, leading/trailing whitespace
+#' discrepancies, and fuzzy string distance variations (Levenshtein distance <= 2).
+#'
+#' @param discrepancy_result A discrepancy result list (such as returned by \code{sv_detect_discrepancies()})
+#'   or an object containing \code{fuzzy_matches}, \code{only_in_x}, \code{only_in_y}, and \code{exact_matches}.
+#' @param df_name Name of the data frame to mutate. Defaults to \code{"df"}. Can be \code{NULL} for
+#'   piped or standalone expressions.
+#' @param col Column name being recoded. Defaults to \code{"status"}. If \code{NULL}, attempts
+#'   to extract from \code{discrepancy_result$from_col} or defaults to \code{"status"}.
+#' @param default Fallback value for unmatched records. If equal to \code{col}, preserves unmatched
+#'   records via \code{.default = <col>}. Set to \code{NULL} to omit the default clause.
+#' @param pipe Logical; if TRUE, emits piped syntax \code{df \%>\% dplyr::mutate(...)}.
+#'
+#' @return A character string of tidyverse code, or \code{NULL} if no discrepancies require cleaning.
+#' @export
+#' @examples
+#' disc <- sv_detect_discrepancies(c("male", "Female"), c("Male", "Female"))
+#' sv_auto_clean_rules(disc, df_name = "patients", col = "gender")
+sv_auto_clean_rules <- function(discrepancy_result, df_name = "df", col = "status",
+                                default = col, pipe = FALSE) {
+  if (is.null(discrepancy_result) || !is.list(discrepancy_result) || length(discrepancy_result) == 0) {
+    return(NULL)
+  }
+
+  target_col <- if (is.null(col) || !nzchar(as.character(col)[1])) {
+    discrepancy_result$from_col %||% discrepancy_result$col %||% discrepancy_result$col1 %||% "status"
+  } else {
+    as.character(col)[1]
+  }
+
+  target_default <- if (identical(default, col)) target_col else default
+
+  only_x <- as.character(discrepancy_result$only_in_x %||% character(0))
+  only_y <- as.character(discrepancy_result$only_in_y %||% character(0))
+  exact <- as.character(discrepancy_result$exact_matches %||% character(0))
+
+  y_pool <- unique(c(exact, only_y))
+
+  fuzzy_df <- discrepancy_result$fuzzy_matches
+  if (!is.null(fuzzy_df) && is.data.frame(fuzzy_df) && nrow(fuzzy_df) > 0) {
+    if (all(c("x", "y") %in% names(fuzzy_df))) {
+      y_pool <- unique(c(y_pool, as.character(fuzzy_df$y)))
+    }
+  }
+
+  y_pool <- y_pool[!is.na(y_pool) & nzchar(y_pool)]
+  if (length(y_pool) == 0) {
+    return(NULL)
+  }
+
+  mappings <- list()
+
+  # 1. Fuzzy matches from discrepancy result
+  if (!is.null(fuzzy_df) && is.data.frame(fuzzy_df) && nrow(fuzzy_df) > 0) {
+    for (i in seq_len(nrow(fuzzy_df))) {
+      fx <- as.character(fuzzy_df$x[i])
+      fy <- as.character(fuzzy_df$y[i])
+      fdist <- if ("distance" %in% names(fuzzy_df)) as.numeric(fuzzy_df$distance[i]) else 1
+      if (!is.na(fx) && !is.na(fy) && nzchar(fx) && nzchar(fy) && fx != fy && fdist <= 2) {
+        if (is.null(mappings[[fx]]) || fdist < mappings[[fx]]$score) {
+          mappings[[fx]] <- list(target = fy, score = fdist)
+        }
+      }
+    }
+  }
+
+  # 2. Inspect only_in_x for whitespace, casing, and edit-distance matches
+  for (src in only_x) {
+    if (is.na(src) || !nzchar(src)) next
+
+    trim_src <- trimws(src)
+    for (tgt in y_pool) {
+      if (src != tgt && trim_src == tgt) {
+        if (is.null(mappings[[src]]) || 0.05 < mappings[[src]]$score) {
+          mappings[[src]] <- list(target = tgt, score = 0.05)
+        }
+      }
+    }
+
+    lower_src <- tolower(trim_src)
+    for (tgt in y_pool) {
+      if (src != tgt && lower_src == tolower(trimws(tgt))) {
+        if (is.null(mappings[[src]]) || 0.1 < mappings[[src]]$score) {
+          mappings[[src]] <- list(target = tgt, score = 0.1)
+        }
+      }
+    }
+
+    if (is.null(mappings[[src]])) {
+      dists <- as.integer(utils::adist(src, y_pool)[1, ])
+      best_idx <- which(dists <= 2L)
+      if (length(best_idx) > 0) {
+        min_idx <- best_idx[which.min(dists[best_idx])]
+        best_tgt <- y_pool[min_idx]
+        best_dist <- dists[min_idx]
+        if (src != best_tgt) {
+          mappings[[src]] <- list(target = best_tgt, score = best_dist)
+        }
+      }
+    }
+  }
+
+  if (length(mappings) == 0) {
+    return(NULL)
+  }
+
+  from_vals <- names(mappings)
+  to_vals <- vapply(mappings, function(m) m$target, character(1))
+
+  valid_idx <- which(from_vals != to_vals)
+  if (length(valid_idx) == 0) {
+    return(NULL)
+  }
+
+  from_vals <- from_vals[valid_idx]
+  to_vals <- to_vals[valid_idx]
+
+  crosswalk <- data.frame(
+    from = from_vals,
+    to = to_vals,
+    stringsAsFactors = FALSE
+  )
+
+  sv_code_recode(
+    df_name = df_name,
+    col = target_col,
+    crosswalk = crosswalk,
+    default = target_default,
+    method = "case_match",
+    pipe = pipe
+  )
+}
+
+#' @rdname sv_auto_clean_rules
+#' @export
+sv_code_auto_clean <- sv_auto_clean_rules

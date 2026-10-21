@@ -507,3 +507,32 @@ test_that("render_card_tag generates header sparklines, categorical profiles, an
   })
   expect_match(zero_var_html, '<svg class="sideview-sparkline"')
 })
+
+
+test_that("sideview_server handles request_suggested_mappings and apply_auto_clean events", {
+  df1 <- data.frame(patient_id = 1:5, gender = c("male", "Female", "male", "Female", "male"), stringsAsFactors = FALSE)
+  df2 <- data.frame(patient_id = 1:5, gender = c("Male", "Female", "Male", "Female", "Male"), stringsAsFactors = FALSE)
+  cards <- list(sv_normalize(df1, name = "t1"), sv_normalize(df2, name = "t2"))
+
+  shiny::testServer(sideview_server(cards), {
+    # 1. Test request_suggested_mappings
+    session$setInputs(request_suggested_mappings = list(min_confidence = 0.60))
+    msgs <- session$userData$custom_messages
+    suggest_msgs <- Filter(function(m) m$type == "sideview_suggested_mappings", msgs)
+    expect_gt(length(suggest_msgs), 0)
+    expect_true(is.list(suggest_msgs[[length(suggest_msgs)]]$message$candidates))
+
+    # 2. Test apply_auto_clean
+    disc <- sv_detect_discrepancies(df1$gender, df2$gender)
+    session$setInputs(apply_auto_clean = list(
+      discrepancy = disc,
+      table = "t1",
+      col = "gender"
+    ))
+    code_msgs <- Filter(function(m) m$type == "sideview_code_update", session$userData$custom_messages)
+    expect_gt(length(code_msgs), 0)
+    last_code <- code_msgs[[length(code_msgs)]]$message$code
+    expect_true(grepl("dplyr::case_match", last_code))
+    expect_true(grepl('"male"\\s*~\\s*"Male"', last_code))
+  })
+})

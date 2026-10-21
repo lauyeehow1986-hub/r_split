@@ -236,6 +236,54 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
     })
   }, ignoreInit = FALSE)
 
+  # 3b. Request Suggested Mappings -> Heuristic FK detection & dispatch
+  shiny::observeEvent(input$request_suggested_mappings, {
+    evt <- input$request_suggested_mappings
+    min_conf <- if (is.list(evt) && !is.null(evt$min_confidence)) {
+      as.numeric(evt$min_confidence)
+    } else {
+      0.70
+    }
+
+    tryCatch({
+      suggestions <- sv_suggest_mappings(normalized_cards, min_confidence = min_conf)
+      candidates <- if (is.data.frame(suggestions) && nrow(suggestions) > 0) {
+        lapply(seq_len(nrow(suggestions)), function(i) {
+          as.list(suggestions[i, , drop = FALSE])
+        })
+      } else {
+        list()
+      }
+
+      dispatch_message("sideview_suggested_mappings", list(
+        candidates = candidates,
+        count = length(candidates)
+      ))
+    }, error = function(e) {
+      message("sideview suggested mappings warning: ", conditionMessage(e))
+    })
+  }, ignoreInit = FALSE)
+
+  # 3c. Apply Auto Clean -> Discrepancy Auto-Resolution Codegen
+  shiny::observeEvent(input$apply_auto_clean, {
+    evt <- input$apply_auto_clean
+    if (is.null(evt)) return()
+
+    tryCatch({
+      payload <- evt$discrepancy %||% evt
+      tbl <- evt$table %||% evt$from_table %||% evt$table1 %||% payload$from_table %||% "df"
+      col <- evt$col %||% evt$from_col %||% evt$col1 %||% payload$from_col %||% payload$col %||% "status"
+      pipe <- isTRUE(evt$pipe)
+
+      code <- sv_auto_clean_rules(payload, df_name = tbl, col = col, pipe = pipe)
+      if (!is.null(code) && nzchar(code)) {
+        dispatch_message("sideview_code_update", list(code = code))
+      }
+    }, error = function(e) {
+      message("sideview auto-clean warning: ", conditionMessage(e))
+    })
+  }, ignoreInit = FALSE)
+
   # 4. Run AI Prompt -> LLM Generation
   shiny::observeEvent(input$run_ai_prompt, {
     evt <- input$run_ai_prompt

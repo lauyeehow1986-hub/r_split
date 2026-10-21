@@ -570,3 +570,69 @@ test_that("sv_code_group_summarize generates valid dplyr group_by and summarise 
   expect_error(sv_code_group_summarize(c("df1", "df2"), group_cols = "a", summary_exprs = c(n = "n()")), "`df_name` must be a single character string or NULL")
 })
 
+test_that("sv_auto_clean_rules generates executable case_match cleanup pipelines", {
+  # 1. Detects casing differences (e.g. 'male' vs 'Male') and normalizes
+  disc_case <- sv_detect_discrepancies(c("male", "Female"), c("Male", "Female"))
+  code_case <- sv_auto_clean_rules(disc_case, df_name = "df", col = "gender")
+  expect_true(grepl("dplyr::case_match", code_case))
+  expect_true(grepl('"male"\\s*~\\s*"Male"', code_case))
+  expect_silent(parse(text = code_case))
+
+  # Verify executable behavior
+  df_gender <- data.frame(gender = c("male", "Female"), stringsAsFactors = FALSE)
+  eval_res_case <- suppressWarnings(eval(parse(text = code_case), list(df = df_gender)))
+  expect_equal(eval_res_case$gender, c("Male", "Female"))
+
+  # 2. Detects whitespace differences (e.g. ' In Progress ' vs 'In Progress') and trims
+  disc_space <- sv_detect_discrepancies(c(" In Progress ", "Done"), c("In Progress", "Done"))
+  code_space <- sv_auto_clean_rules(disc_space, df_name = "tasks", col = "status")
+  expect_true(grepl("dplyr::case_match", code_space))
+  expect_true(grepl('" In Progress "\\s*~\\s*"In Progress"', code_space))
+  expect_silent(parse(text = code_space))
+
+  df_tasks <- data.frame(status = c(" In Progress ", "Done"), stringsAsFactors = FALSE)
+  eval_res_space <- suppressWarnings(eval(parse(text = code_space), list(tasks = df_tasks)))
+  expect_equal(eval_res_space$status, c("In Progress", "Done"))
+
+  # 3. Maps fuzzy matches (Levenshtein distance <= 2, e.g. 'Compl.' vs 'Completed')
+  disc_fuzzy <- list(
+    exact_matches = c("Pending"),
+    fuzzy_matches = data.frame(x = "Compl.", y = "Completed", distance = 2L, stringsAsFactors = FALSE),
+    only_in_x = c("Compl."),
+    only_in_y = c("Completed"),
+    stats = list(exact_count = 1L, fuzzy_count = 1L)
+  )
+  code_fuzzy <- sv_auto_clean_rules(disc_fuzzy, df_name = "df", col = "status")
+  expect_true(grepl("dplyr::case_match", code_fuzzy))
+  expect_true(grepl('"Compl."\\s*~\\s*"Completed"', code_fuzzy))
+  expect_silent(parse(text = code_fuzzy))
+
+  df_status <- data.frame(status = c("Compl.", "Pending"), stringsAsFactors = FALSE)
+  eval_res_fuzzy <- suppressWarnings(eval(parse(text = code_fuzzy), list(df = df_status)))
+  expect_equal(eval_res_fuzzy$status, c("Completed", "Pending"))
+
+  # 4. Handles empty discrepancies (returns NULL or empty code)
+  disc_empty <- sv_detect_discrepancies(c("A", "B"), c("A", "B"))
+  expect_null(sv_auto_clean_rules(disc_empty))
+  expect_null(sv_auto_clean_rules(NULL))
+  expect_null(sv_auto_clean_rules(list()))
+
+  # 5. Supports pipe = TRUE, df_name = NULL, col = NULL
+  code_pipe <- sv_auto_clean_rules(disc_case, df_name = "df", col = "gender", pipe = TRUE)
+  expect_match(code_pipe, "^df\\s*%>%\\s*dplyr::mutate")
+  expect_silent(parse(text = code_pipe))
+
+  code_nodf <- sv_auto_clean_rules(disc_case, df_name = NULL, col = "gender", pipe = FALSE)
+  expect_match(code_nodf, "^dplyr::mutate\\(gender\\s*=")
+  expect_silent(parse(text = code_nodf))
+
+  code_nocol <- sv_auto_clean_rules(disc_case, df_name = NULL, col = NULL, pipe = FALSE)
+  expect_true(grepl("dplyr::case_match", code_nocol))
+  expect_silent(parse(text = code_nocol))
+
+  # 6. Alias sv_code_auto_clean works identically
+  code_alias <- sv_code_auto_clean(disc_case, df_name = "df", col = "gender")
+  expect_equal(code_alias, code_case)
+})
+
+
