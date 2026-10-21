@@ -381,8 +381,7 @@ function findSideviewJs() {
     path.join(__dirname, '../inst/www/sideview.js'),
     path.join(__dirname, 'inst/www/sideview.js'),
     path.resolve('inst/www/sideview.js'),
-    path.resolve('../inst/www/sideview.js'),
-    'C:/Users/lauye/Downloads/r_split/.worktrees/v0.2.0-milestone/inst/www/sideview.js'
+    path.resolve('../inst/www/sideview.js')
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;

@@ -1220,6 +1220,7 @@ function sendToShiny(name, value) {
     var startCardY = 0;
 
     function startDrag(e) {
+      if (isDragging) return;
       if (e.target.closest('button') || e.target.closest('input')) return;
 
       isDragging = true;

@@ -21,6 +21,11 @@ if (!"package:sideview" %in% search()) {
   for (f in r_files) source(f)
 }
 
+if (!exists("ensure_package_installed", mode = "function")) {
+  helper_files <- list.files(c(".", "tests/testthat", "../tests/testthat"), pattern = "^helper-.*\\.[Rr]$", full.names = TRUE)
+  for (hf in helper_files) source(hf)
+}
+
 # Locate Node.js executable
 find_node <- function() {
   node_cmd <- Sys.which("node")
@@ -84,8 +89,7 @@ run_gui_test_scenarios <- function() {
 }
 
 # Diagnostic Failure Capture Helper Function
-capture_gui_diagnostics <- function(test_name, dump_data = NULL, error_msg = "Assertion failure") {
-  artifacts_dir <- file.path("artifacts")
+capture_gui_diagnostics <- function(test_name, dump_data = NULL, error_msg = "Assertion failure", artifacts_dir = tempdir()) {
   if (!dir.exists(artifacts_dir)) {
     dir.create(artifacts_dir, showWarnings = FALSE, recursive = TRUE)
   }
@@ -250,23 +254,22 @@ test_that("Computer Use GUI: Diagnostic failure capture generates serialized art
   expect_match(diag$report_text, "canvas_failure_dump\\.json")
 
   # Test R diagnostic capture helper
-  diag_result <- capture_gui_diagnostics(
+  diag_result <- suppressMessages(capture_gui_diagnostics(
     test_name = "Unit test failure capture",
     dump_data = list(scale = 1.0, cards = 2),
     error_msg = "Simulated unit test anomaly"
-  )
+  ))
   expect_true(file.exists(diag_result$dump_file))
   expect_true(file.exists(diag_result$diag_file))
   expect_match(paste(diag_result$report, collapse = "\n"), "AUTOMATED GUI DIAGNOSTIC REPORT")
+  if (file.exists(diag_result$dump_file)) unlink(diag_result$dump_file)
+  if (file.exists(diag_result$diag_file)) unlink(diag_result$diag_file)
 })
 
 # ==============================================================================
 # Tier 2: Programmatic headless shinytest2 / Chromote browser test
 # ==============================================================================
 test_that("Computer Use GUI: Programmatic browser test via shinytest2 (Tier 2)", {
-  # Verify shinytest2 dependency is installed and available
-  expect_true(requireNamespace("shinytest2", quietly = TRUE))
-
   # Test Sideview App Driver integration
   patients <- data.frame(patient_id = c("P1", "P2", "P3"), age = c(45, 62, 38), stringsAsFactors = FALSE)
   visits <- data.frame(patient_id = c("P1", "P2", "P4"), date = c("2026-01-01", "2026-02-15", "2026-03-10"), stringsAsFactors = FALSE)
@@ -305,6 +308,7 @@ test_that("Computer Use GUI: Programmatic browser test via shinytest2 (Tier 2)",
 
   # If an interactive headed desktop session is explicitly requested via SIDEVIEW_HEADED_QA:
   if (nzchar(Sys.getenv("SIDEVIEW_HEADED_QA"))) {
+    ensure_package_installed("shinytest2")
     app_dir <- file.path(tempdir(), "sideview_st2_test")
     dir.create(app_dir, showWarnings = FALSE, recursive = TRUE)
     writeLines(
