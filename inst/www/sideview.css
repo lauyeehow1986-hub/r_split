@@ -871,3 +871,53 @@
 .sideview-row-filtered {
   display: none !important;
 }
+
+
+/* Virtual Scrolling Table & Viewport */
+.sideview-table-viewport {
+  position: relative;
+  overflow: auto;
+  max-height: 380px;
+  min-height: 140px;
+  width: 100%;
+}
+
+.sideview-table-virtual {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.sideview-table tbody tr {
+  height: 28px;
+  box-sizing: border-box;
+}
+
+.sideview-table tbody td {
+  height: 28px;
+  box-sizing: border-box;
+}
+
+/* Virtual Spacers to maintain accurate scroll height across 100k+ rows */
+.sideview-virtual-spacer {
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  pointer-events: none;
+}
+
+.sideview-virtual-spacer td {
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+  height: inherit;
+}
+
+.sideview-virtual-spacer-top td,
+.sideview-virtual-spacer-bottom td {
+  border-bottom: none !important;
+  border-top: none !important;
+}

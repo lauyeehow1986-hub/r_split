@@ -25,6 +25,394 @@ function sendToShiny(name, value) {
     }
   }
 
+  /**
+   * VirtualTable - High-performance virtualized table renderer for 100k+ rows
+   * Maintains accurate scrollbars via top/bottom spacers while rendering only visible rows + buffer.
+   */
+  function VirtualTable(tableOrContainer, options) {
+    var self = this;
+    options = options || {};
+
+    if (typeof tableOrContainer === 'string') {
+      tableOrContainer = document.querySelector(tableOrContainer);
+    }
+    if (!tableOrContainer) {
+      throw new Error('VirtualTable target element not found');
+    }
+
+    if (tableOrContainer.tagName === 'TABLE') {
+      this.table = tableOrContainer;
+      this.scrollContainer = tableOrContainer.closest('.sideview-card-body') ||
+                             tableOrContainer.closest('.sideview-table-viewport') ||
+                             tableOrContainer.parentElement;
+    } else {
+      this.scrollContainer = tableOrContainer;
+      this.table = tableOrContainer.querySelector('table') || tableOrContainer;
+    }
+
+    if (this.scrollContainer && !this.scrollContainer.classList.contains('sideview-table-viewport')) {
+      this.scrollContainer.classList.add('sideview-table-viewport');
+    }
+    if (this.table && !this.table.classList.contains('sideview-table-virtual')) {
+      this.table.classList.add('sideview-table-virtual');
+    }
+
+    this.options = Object.assign({
+      rowHeight: 28,
+      buffer: 10,
+      colNames: null,
+      colTypes: {},
+      data: null
+    }, options);
+
+    this.rowHeight = this.options.rowHeight || 28;
+    this.buffer = this.options.buffer !== undefined ? this.options.buffer : 10;
+    this.colNames = this.options.colNames ? this.options.colNames.slice() : [];
+    this.colTypes = this.options.colTypes || {};
+    this.data = this.options.data || null;
+
+    this.totalRows = 0;
+    this.highlightedColumns = new Map();
+    this.highlightedCells = new Map();
+    this.filteredIndices = null;
+    this.sortState = { colName: null, colIndex: -1, direction: 'none' };
+    this.activeSortIndices = null;
+    this.currentFilter = null;
+    this._ticking = false;
+
+    this.initDOM();
+    this.initData();
+    this.attachScrollListener();
+    this.render();
+
+    this.table._virtualTable = this;
+    if (this.scrollContainer) {
+      this.scrollContainer._virtualTable = this;
+    }
+  }
+
+  VirtualTable.prototype.initDOM = function () {
+    this.tbody = this.table.querySelector('tbody');
+    if (!this.tbody) {
+      this.tbody = document.createElement('tbody');
+      this.table.appendChild(this.tbody);
+    }
+
+    this.topSpacer = document.createElement('tr');
+    this.topSpacer.className = 'sideview-virtual-spacer sideview-virtual-spacer-top';
+    this.topCell = document.createElement('td');
+    this.topSpacer.appendChild(this.topCell);
+
+    this.bottomSpacer = document.createElement('tr');
+    this.bottomSpacer.className = 'sideview-virtual-spacer sideview-virtual-spacer-bottom';
+    this.bottomCell = document.createElement('td');
+    this.bottomSpacer.appendChild(this.bottomCell);
+  };
+
+  VirtualTable.prototype.initData = function () {
+    var self = this;
+    if (this.data) {
+      if (!Array.isArray(this.data) && typeof this.data === 'object') {
+        if (!this.colNames.length) {
+          this.colNames = Object.keys(this.data);
+        }
+        if (this.colNames.length > 0 && Array.isArray(this.data[this.colNames[0]])) {
+          this.totalRows = this.data[this.colNames[0]].length;
+        } else {
+          this.totalRows = 0;
+        }
+      } else if (Array.isArray(this.data)) {
+        this.totalRows = this.data.length;
+        if (!this.colNames.length && this.totalRows > 0) {
+          var firstRow = this.data[0];
+          if (!Array.isArray(firstRow) && typeof firstRow === 'object') {
+            this.colNames = Object.keys(firstRow);
+          }
+        }
+      }
+      this.tbody.innerHTML = '';
+      this.tbody.appendChild(this.topSpacer);
+      this.tbody.appendChild(this.bottomSpacer);
+    } else {
+      var existingRows = Array.from(this.tbody.querySelectorAll('tr:not(.sideview-virtual-spacer)'));
+      if (existingRows.length > 0) {
+        if (!this.colNames.length) {
+          var ths = this.table.querySelectorAll('thead th');
+          ths.forEach(function (th) {
+            self.colNames.push(th.dataset.colName || th.textContent.trim());
+          });
+        }
+        var extracted = {};
+        this.colNames.forEach(function (cn) { extracted[cn] = []; });
+        existingRows.forEach(function (tr) {
+          self.colNames.forEach(function (cn, colIdx) {
+            var cell = tr.cells[colIdx];
+            extracted[cn].push(cell ? cell.textContent.trim() : '');
+          });
+        });
+        this.data = extracted;
+        this.totalRows = existingRows.length;
+
+        this.tbody.innerHTML = '';
+        this.tbody.appendChild(this.topSpacer);
+        this.tbody.appendChild(this.bottomSpacer);
+      } else {
+        this.tbody.appendChild(this.topSpacer);
+        this.tbody.appendChild(this.bottomSpacer);
+      }
+    }
+
+    var numCols = this.colNames.length || this.table.querySelectorAll('thead th').length || 1;
+    this.topCell.colSpan = numCols;
+    this.bottomCell.colSpan = numCols;
+  };
+
+  VirtualTable.prototype.attachScrollListener = function () {
+    var self = this;
+    if (!this.scrollContainer) return;
+    this._scrollHandler = function () {
+      if (self._ticking) return;
+      self._ticking = true;
+      requestAnimationFrame(function () {
+        self._ticking = false;
+        self.render();
+      });
+    };
+    this.scrollContainer.addEventListener('scroll', this._scrollHandler, { passive: true });
+  };
+
+  VirtualTable.prototype.getActiveIndices = function () {
+    if (this.filteredIndices !== null) {
+      return this.filteredIndices;
+    }
+    if (this.activeSortIndices !== null) {
+      return this.activeSortIndices;
+    }
+    return null;
+  };
+
+  VirtualTable.prototype.getRowCount = function () {
+    var active = this.getActiveIndices();
+    return active !== null ? active.length : this.totalRows;
+  };
+
+  VirtualTable.prototype.getCellValue = function (rowIndex, colName, colIndex) {
+    if (!this.data) return '';
+    if (this.data[colName] !== undefined) {
+      return this.data[colName][rowIndex];
+    }
+    if (Array.isArray(this.data) && this.data[rowIndex] !== undefined) {
+      var row = this.data[rowIndex];
+      if (Array.isArray(row)) return row[colIndex];
+      if (row && typeof row === 'object') return row[colName];
+    }
+    return '';
+  };
+
+  VirtualTable.prototype.render = function () {
+    var totalCount = this.getRowCount();
+    var totalVirtualHeight = totalCount * this.rowHeight;
+    var scrollTop = this.scrollContainer ? this.scrollContainer.scrollTop : 0;
+    var viewportHeight = this.scrollContainer ? (this.scrollContainer.clientHeight || 380) : 380;
+
+    var visibleStart = Math.floor(scrollTop / this.rowHeight);
+    var visibleCount = Math.ceil(viewportHeight / this.rowHeight);
+
+    var startIndex = Math.max(0, visibleStart - this.buffer);
+    var endIndex = Math.min(totalCount, visibleStart + visibleCount + this.buffer);
+
+    var topHeight = startIndex * this.rowHeight;
+    var bottomHeight = Math.max(0, (totalCount - endIndex) * this.rowHeight);
+
+    this.topSpacer.style.height = topHeight + 'px';
+    this.topCell.style.height = topHeight + 'px';
+    this.topSpacer.style.display = topHeight > 0 ? '' : 'none';
+
+    this.bottomSpacer.style.height = bottomHeight + 'px';
+    this.bottomCell.style.height = bottomHeight + 'px';
+    this.bottomSpacer.style.display = bottomHeight > 0 ? '' : 'none';
+
+    var numCols = this.colNames.length || this.table.querySelectorAll('thead th').length || 1;
+    this.topCell.colSpan = numCols;
+    this.bottomCell.colSpan = numCols;
+
+    var active = this.getActiveIndices();
+    var frag = document.createDocumentFragment();
+
+    for (var i = startIndex; i < endIndex; i++) {
+      var rawRowIndex = active !== null ? active[i] : i;
+      var tr = document.createElement('tr');
+      tr.dataset.rowIndex = rawRowIndex;
+      tr.dataset.virtualIndex = i;
+
+      for (var c = 0; c < numCols; c++) {
+        var colName = this.colNames[c];
+        var td = document.createElement('td');
+        var val = this.getCellValue(rawRowIndex, colName, c);
+        td.textContent = (val === null || val === undefined) ? 'NA' : val;
+
+        var isNum = (this.colTypes && (this.colTypes[colName] === 'numeric' || this.colTypes[colName] === 'integer' || this.colTypes[colName] === 'double')) ||
+                    (typeof val === 'number') ||
+                    (!isNaN(parseFloat(val)) && isFinite(val) && val !== '' && val !== 'NA');
+        if (isNum) {
+          td.classList.add('is-number');
+        }
+
+        // Apply column highlight
+        if (this.highlightedColumns.has(colName)) {
+          var hColColor = this.highlightedColumns.get(colName);
+          if (hColColor && hColColor !== 'clear') {
+            td.classList.add('sv-highlight-' + hColColor, 'sideview-cell-highlight');
+          }
+        }
+
+        // Apply cell highlight
+        var cellKey = rawRowIndex + '_' + c;
+        if (this.highlightedCells.has(cellKey)) {
+          var hCellColor = this.highlightedCells.get(cellKey);
+          if (hCellColor && hCellColor !== 'clear') {
+            td.classList.add('sv-highlight-' + hCellColor, 'sideview-cell-highlight');
+          }
+        }
+
+        tr.appendChild(td);
+      }
+      frag.appendChild(tr);
+    }
+
+    while (this.topSpacer.nextSibling && this.topSpacer.nextSibling !== this.bottomSpacer) {
+      this.tbody.removeChild(this.topSpacer.nextSibling);
+    }
+    this.tbody.insertBefore(frag, this.bottomSpacer);
+  };
+
+  VirtualTable.prototype.sort = function (colIndex, colName, direction) {
+    this.sortState = { colIndex: colIndex, colName: colName, direction: direction };
+    if (!colName && this.colNames[colIndex]) {
+      colName = this.colNames[colIndex];
+    }
+
+    if (direction === 'none') {
+      this.activeSortIndices = null;
+      if (this.currentFilter) {
+        this.reapplyFilter();
+      }
+    } else {
+      var indices = [];
+      for (var i = 0; i < this.totalRows; i++) indices.push(i);
+
+      var self = this;
+      indices.sort(function (a, b) {
+        var valA = self.getCellValue(a, colName, colIndex);
+        var valB = self.getCellValue(b, colName, colIndex);
+
+        var numA = parseFloat(valA);
+        var numB = parseFloat(valB);
+        var isNum = !isNaN(numA) && !isNaN(numB) && valA !== '' && valB !== '' && valA !== 'NA' && valB !== 'NA';
+
+        var cmp = 0;
+        if (isNum) {
+          cmp = numA - numB;
+        } else {
+          var strA = String(valA || '');
+          var strB = String(valB || '');
+          cmp = strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+        }
+        return direction === 'asc' ? cmp : -cmp;
+      });
+
+      this.activeSortIndices = indices;
+      if (this.currentFilter) {
+        this.reapplyFilter();
+      }
+    }
+
+    this.render();
+  };
+
+  VirtualTable.prototype.filter = function (colIndex, colName, operator, value) {
+    if (!colName && this.colNames[colIndex]) {
+      colName = this.colNames[colIndex];
+    }
+    this.currentFilter = { colIndex: colIndex, colName: colName, operator: operator, value: value };
+    this.reapplyFilter();
+    if (this.scrollContainer) this.scrollContainer.scrollTop = 0;
+    this.render();
+    return this.filteredIndices ? this.filteredIndices.length : 0;
+  };
+
+  VirtualTable.prototype.clearFilter = function () {
+    this.currentFilter = null;
+    this.filteredIndices = null;
+    this.render();
+  };
+
+  VirtualTable.prototype.reapplyFilter = function () {
+    if (!this.currentFilter) {
+      this.filteredIndices = null;
+      return;
+    }
+    var self = this;
+    var colName = this.currentFilter.colName;
+    var colIndex = this.currentFilter.colIndex;
+    var op = this.currentFilter.operator;
+    var val = this.currentFilter.value;
+    var numVal = parseFloat(val);
+    var isNumFilter = !isNaN(numVal);
+
+    var baseIndices = this.activeSortIndices !== null
+      ? this.activeSortIndices
+      : Array.from({ length: this.totalRows }, function (_, i) { return i; });
+
+    this.filteredIndices = baseIndices.filter(function (idx) {
+      var raw = self.getCellValue(idx, colName, colIndex);
+      var text = (raw === null || raw === undefined) ? '' : String(raw).trim();
+      var numCell = parseFloat(text);
+
+      if (op === 'contains') {
+        return text.toLowerCase().indexOf(val.toLowerCase()) !== -1;
+      } else if (op === 'equals') {
+        return isNumFilter && !isNaN(numCell) ? numCell === numVal : text.toLowerCase() === val.toLowerCase();
+      } else if (op === 'not_equals') {
+        return isNumFilter && !isNaN(numCell) ? numCell !== numVal : text.toLowerCase() !== val.toLowerCase();
+      } else if (op === 'gt') {
+        return !isNaN(numCell) && numCell > numVal;
+      } else if (op === 'gte') {
+        return !isNaN(numCell) && numCell >= numVal;
+      } else if (op === 'lt') {
+        return !isNaN(numCell) && numCell < numVal;
+      } else if (op === 'lte') {
+        return !isNaN(numCell) && numCell <= numVal;
+      }
+      return true;
+    });
+  };
+
+  VirtualTable.prototype.setColumnHighlight = function (colName, color) {
+    if (!color || color === 'clear') {
+      this.highlightedColumns.delete(colName);
+    } else {
+      this.highlightedColumns.set(colName, color);
+    }
+    this.render();
+  };
+
+  VirtualTable.prototype.setCellHighlight = function (rowIndex, colIndex, color) {
+    var key = rowIndex + '_' + colIndex;
+    if (!color || color === 'clear') {
+      this.highlightedCells.delete(key);
+    } else {
+      this.highlightedCells.set(key, color);
+    }
+    this.render();
+  };
+
+  VirtualTable.prototype.clearHighlights = function () {
+    this.highlightedColumns.clear();
+    this.highlightedCells.clear();
+    this.render();
+  };
+
   function SideviewEngine(containerElement, options) {
     var self = this;
     this.container = typeof containerElement === 'string'
@@ -382,16 +770,19 @@ function sendToShiny(name, value) {
         var cardId = cardEl ? cardEl.dataset.cardId : null;
         var colName = th.dataset.colName;
 
-        var highlightClass = self.selectedColor === 'clear' ? '' : 'sv-highlight-' + self.selectedColor;
-        var allCellsInCol = table.querySelectorAll('tbody tr td:nth-child(' + (colIdx + 1) + ')');
+        if (table && table._virtualTable) {
+          table._virtualTable.setColumnHighlight(colName, self.selectedColor);
+        } else if (table) {
+          var highlightClass = self.selectedColor === 'clear' ? '' : 'sv-highlight-' + self.selectedColor;
+          var allCellsInCol = table.querySelectorAll('tbody tr td:nth-child(' + (colIdx + 1) + ')');
 
-        allCellsInCol.forEach(function (cell) {
-          // Remove old highlight classes
-          cell.className = cell.className.replace(/sv-highlight-\w+/g, '').replace('sideview-cell-highlight', '').trim();
-          if (highlightClass) {
-            cell.classList.add(highlightClass, 'sideview-cell-highlight');
-          }
-        });
+          allCellsInCol.forEach(function (cell) {
+            cell.className = cell.className.replace(/sv-highlight-\w+/g, '').replace('sideview-cell-highlight', '').trim();
+            if (highlightClass) {
+              cell.classList.add(highlightClass, 'sideview-cell-highlight');
+            }
+          });
+        }
 
         sendToShiny('sideview_highlight_changed', {
           card_id: cardId,
@@ -401,20 +792,27 @@ function sendToShiny(name, value) {
         });
       } else if (td) {
         // Individual cell highlight
-        var cellHighlightClass = self.selectedColor === 'clear' ? '' : 'sv-highlight-' + self.selectedColor;
-        td.className = td.className.replace(/sv-highlight-\w+/g, '').replace('sideview-cell-highlight', '').trim();
-        if (cellHighlightClass) {
-          td.classList.add(cellHighlightClass, 'sideview-cell-highlight');
-        }
-
         var cellCard = td.closest('.sideview-card');
         var cellTable = td.closest('table');
-        var thCol = cellTable.querySelectorAll('th')[td.cellIndex];
+        var thCol = cellTable ? cellTable.querySelectorAll('th')[td.cellIndex] : null;
+        var rawRowIdx = td.parentElement.dataset.rowIndex !== undefined
+          ? parseInt(td.parentElement.dataset.rowIndex, 10)
+          : td.parentElement.rowIndex;
+
+        if (cellTable && cellTable._virtualTable) {
+          cellTable._virtualTable.setCellHighlight(rawRowIdx, td.cellIndex, self.selectedColor);
+        } else {
+          var cellHighlightClass = self.selectedColor === 'clear' ? '' : 'sv-highlight-' + self.selectedColor;
+          td.className = td.className.replace(/sv-highlight-\w+/g, '').replace('sideview-cell-highlight', '').trim();
+          if (cellHighlightClass) {
+            td.classList.add(cellHighlightClass, 'sideview-cell-highlight');
+          }
+        }
 
         sendToShiny('sideview_highlight_changed', {
           card_id: cellCard ? cellCard.dataset.cardId : null,
           col_name: thCol ? thCol.dataset.colName : null,
-          row_idx: td.parentElement.rowIndex,
+          row_idx: rawRowIdx,
           color: self.selectedColor
         });
       }
@@ -583,7 +981,7 @@ function sendToShiny(name, value) {
 
     if (cardData.type === 'grid' && cardData.data) {
       var table = document.createElement('table');
-      table.className = 'sideview-table';
+      table.className = 'sideview-table sideview-table-virtual';
 
       // Header row
       var thead = document.createElement('thead');
@@ -613,24 +1011,17 @@ function sendToShiny(name, value) {
       thead.appendChild(headerRow);
       table.appendChild(thead);
 
-      // Body rows
-      var tbody = document.createElement('tbody');
-      var numRows = cardData.data[colNames[0]] ? cardData.data[colNames[0]].length : 0;
-      for (var r = 0; r < numRows; r++) {
-        var tr = document.createElement('tr');
-        colNames.forEach(function (colName) {
-          var td = document.createElement('td');
-          var val = cardData.data[colName][r];
-          td.textContent = (val === null || val === undefined) ? 'NA' : val;
-          if (typeof val === 'number') {
-            td.classList.add('is-number');
-          }
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      }
-      table.appendChild(tbody);
       body.appendChild(table);
+
+      // Initialize VirtualTable for high-performance DOM viewport
+      var vTable = new VirtualTable(table, {
+        rowHeight: 28,
+        buffer: 10,
+        data: cardData.data,
+        colNames: colNames,
+        colTypes: colTypes
+      });
+      cardEl._virtualTable = table._virtualTable = vTable;
     } else if (cardData.html_content) {
       body.innerHTML = cardData.html_content;
     }
@@ -772,11 +1163,21 @@ function sendToShiny(name, value) {
       var cardId = cardEl.dataset.cardId || cardEl.id || ('card_' + index);
       var cardName = cardEl.dataset.cardName || ('Table_' + (index + 1));
       var body = cardEl.querySelector('.sideview-card-body');
+      var table = cardEl.querySelector('.sideview-table');
+      var vTable = null;
+      if (table && !table._virtualTable) {
+        vTable = new VirtualTable(table, {
+          rowHeight: 28,
+          buffer: 10
+        });
+        cardEl._virtualTable = table._virtualTable = vTable;
+      }
       var cardMeta = {
         id: cardId,
         name: cardName,
         element: cardEl,
         body: body,
+        virtualTable: vTable,
         x: parseFloat(cardEl.style.left) || 0,
         y: parseFloat(cardEl.style.top) || 0
       };
@@ -1027,6 +1428,16 @@ function sendToShiny(name, value) {
     var activePorts = this.container.querySelectorAll('.sideview-col-port.active, .sideview-col-port.selected, .sideview-col-port.connecting');
     activePorts.forEach(function (p) { p.classList.remove('active', 'selected', 'connecting'); });
 
+    // Reset all VirtualTable instances
+    this.cards.forEach(function (card) {
+      var vt = card.virtualTable || (card.element ? card.element._virtualTable : null);
+      if (vt) {
+        vt.clearFilter();
+        vt.sort(-1, null, 'none');
+        vt.clearHighlights();
+      }
+    });
+
     // 2b. Reset all column sort indicators and row filters
     var pop = document.querySelector('.sideview-filter-popover');
     if (pop) pop.remove();
@@ -1108,59 +1519,86 @@ function sendToShiny(name, value) {
 
     th.dataset.sortState = nextState;
 
-    // Get all rows
-    var rows = Array.from(tbody.querySelectorAll('tr'));
-    rows.forEach(function (r, idx) {
-      if (!r.dataset.rowIndex) r.dataset.rowIndex = idx;
-    });
+    if (table._virtualTable) {
+      table._virtualTable.sort(colIndex, colName, nextState);
+      if (nextState === 'none') {
+        btn.textContent = '⇅';
+        btn.classList.remove('active');
+        self.showToast('Reset column sort order on ' + colName, 'info');
+      } else {
+        btn.classList.add('active');
+        btn.textContent = nextState === 'asc' ? '▲' : '▼';
 
-    if (nextState === 'none') {
-      // Restore initial order
-      rows.sort(function (a, b) {
-        return parseInt(a.dataset.rowIndex, 10) - parseInt(b.dataset.rowIndex, 10);
-      });
-      btn.textContent = '⇅';
-      btn.classList.remove('active');
-      self.showToast('Reset column sort order on ' + colName, 'info');
+        var cardName = cardEl.dataset.cardName || 'df';
+        var escCol = escapeColIdentifier(colName);
+        var arrangeArg = nextState === 'desc' ? 'dplyr::desc(' + escCol + ')' : escCol;
+        var arrangeCode = cardName + ' %>\n  dplyr::arrange(' + arrangeArg + ')';
+
+        self.activateDrawerTab('arrange');
+        self.updateDrawerCode(arrangeCode);
+        self.showToast('Sorted ' + colName + ' (' + (nextState === 'asc' ? 'ascending' : 'descending') + ')', 'success');
+
+        sendToShiny('column_sorted', {
+          table: cardName,
+          column: colName,
+          direction: nextState,
+          code: arrangeCode
+        });
+      }
     } else {
-      btn.classList.add('active');
-      btn.textContent = nextState === 'asc' ? '▲' : '▼';
-
-      rows.sort(function (a, b) {
-        var cellA = a.cells[colIndex] ? a.cells[colIndex].textContent.trim() : '';
-        var cellB = b.cells[colIndex] ? b.cells[colIndex].textContent.trim() : '';
-
-        var numA = parseFloat(cellA);
-        var numB = parseFloat(cellB);
-        var isNum = !isNaN(numA) && !isNaN(numB) && cellA !== '' && cellB !== '';
-
-        var cmp = 0;
-        if (isNum) {
-          cmp = numA - numB;
-        } else {
-          cmp = cellA.localeCompare(cellB, undefined, { numeric: true, sensitivity: 'base' });
-        }
-        return nextState === 'asc' ? cmp : -cmp;
+      // Fallback for non-virtualized table
+      var rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.forEach(function (r, idx) {
+        if (!r.dataset.rowIndex) r.dataset.rowIndex = idx;
       });
 
-      var cardName = cardEl.dataset.cardName || 'df';
-      var escCol = escapeColIdentifier(colName);
-      var arrangeArg = nextState === 'desc' ? 'dplyr::desc(' + escCol + ')' : escCol;
-      var arrangeCode = cardName + ' %>%\n  dplyr::arrange(' + arrangeArg + ')';
+      if (nextState === 'none') {
+        rows.sort(function (a, b) {
+          return parseInt(a.dataset.rowIndex, 10) - parseInt(b.dataset.rowIndex, 10);
+        });
+        btn.textContent = '⇅';
+        btn.classList.remove('active');
+        self.showToast('Reset column sort order on ' + colName, 'info');
+      } else {
+        btn.classList.add('active');
+        btn.textContent = nextState === 'asc' ? '▲' : '▼';
 
-      self.activateDrawerTab('arrange');
-      self.updateDrawerCode(arrangeCode);
-      self.showToast('Sorted ' + colName + ' (' + (nextState === 'asc' ? 'ascending' : 'descending') + ')', 'success');
+        rows.sort(function (a, b) {
+          var cellA = a.cells[colIndex] ? a.cells[colIndex].textContent.trim() : '';
+          var cellB = b.cells[colIndex] ? b.cells[colIndex].textContent.trim() : '';
 
-      sendToShiny('column_sorted', {
-        table: cardName,
-        column: colName,
-        direction: nextState,
-        code: arrangeCode
-      });
+          var numA = parseFloat(cellA);
+          var numB = parseFloat(cellB);
+          var isNum = !isNaN(numA) && !isNaN(numB) && cellA !== '' && cellB !== '';
+
+          var cmp = 0;
+          if (isNum) {
+            cmp = numA - numB;
+          } else {
+            cmp = cellA.localeCompare(cellB, undefined, { numeric: true, sensitivity: 'base' });
+          }
+          return nextState === 'asc' ? cmp : -cmp;
+        });
+
+        var cardNameFallback = cardEl.dataset.cardName || 'df';
+        var escColFallback = escapeColIdentifier(colName);
+        var arrangeArgFallback = nextState === 'desc' ? 'dplyr::desc(' + escColFallback + ')' : escColFallback;
+        var arrangeCodeFallback = cardNameFallback + ' %>\n  dplyr::arrange(' + arrangeArgFallback + ')';
+
+        self.activateDrawerTab('arrange');
+        self.updateDrawerCode(arrangeCodeFallback);
+        self.showToast('Sorted ' + colName + ' (' + (nextState === 'asc' ? 'ascending' : 'descending') + ')', 'success');
+
+        sendToShiny('column_sorted', {
+          table: cardNameFallback,
+          column: colName,
+          direction: nextState,
+          code: arrangeCodeFallback
+        });
+      }
+      rows.forEach(function (r) { tbody.appendChild(r); });
     }
 
-    rows.forEach(function (r) { tbody.appendChild(r); });
     self.updateConnectors();
   };
 
@@ -1219,9 +1657,13 @@ function sendToShiny(name, value) {
     popover.querySelector('.sideview-filter-clear').addEventListener('click', function () {
       var table = cardEl.querySelector('.sideview-table');
       if (table) {
-        table.querySelectorAll('tbody tr').forEach(function (tr) {
-          tr.classList.remove('sideview-row-filtered');
-        });
+        if (table._virtualTable) {
+          table._virtualTable.clearFilter();
+        } else {
+          table.querySelectorAll('tbody tr').forEach(function (tr) {
+            tr.classList.remove('sideview-row-filtered');
+          });
+        }
       }
       btn.classList.remove('active');
       popover.remove();
@@ -1239,40 +1681,48 @@ function sendToShiny(name, value) {
       var table = cardEl.querySelector('.sideview-table');
       if (!table) return;
 
-      var rows = table.querySelectorAll('tbody tr');
+      var totalRowsCount = 0;
       var matchedCount = 0;
-      var numVal = parseFloat(val);
-      var isNumFilter = !isNaN(numVal);
 
-      rows.forEach(function (tr) {
-        var cell = tr.cells[colIndex];
-        var text = cell ? cell.textContent.trim() : '';
-        var numCell = parseFloat(text);
-        var match = false;
+      if (table._virtualTable) {
+        totalRowsCount = table._virtualTable.totalRows;
+        matchedCount = table._virtualTable.filter(colIndex, colName, op, val);
+      } else {
+        var rows = table.querySelectorAll('tbody tr');
+        totalRowsCount = rows.length;
+        var numVal = parseFloat(val);
+        var isNumFilter = !isNaN(numVal);
 
-        if (op === 'contains') {
-          match = text.toLowerCase().indexOf(val.toLowerCase()) !== -1;
-        } else if (op === 'equals') {
-          match = isNumFilter && !isNaN(numCell) ? numCell === numVal : text.toLowerCase() === val.toLowerCase();
-        } else if (op === 'not_equals') {
-          match = isNumFilter && !isNaN(numCell) ? numCell !== numVal : text.toLowerCase() !== val.toLowerCase();
-        } else if (op === 'gt') {
-          match = !isNaN(numCell) && numCell > numVal;
-        } else if (op === 'gte') {
-          match = !isNaN(numCell) && numCell >= numVal;
-        } else if (op === 'lt') {
-          match = !isNaN(numCell) && numCell < numVal;
-        } else if (op === 'lte') {
-          match = !isNaN(numCell) && numCell <= numVal;
-        }
+        rows.forEach(function (tr) {
+          var cell = tr.cells[colIndex];
+          var text = cell ? cell.textContent.trim() : '';
+          var numCell = parseFloat(text);
+          var match = false;
 
-        if (match) {
-          tr.classList.remove('sideview-row-filtered');
-          matchedCount++;
-        } else {
-          tr.classList.add('sideview-row-filtered');
-        }
-      });
+          if (op === 'contains') {
+            match = text.toLowerCase().indexOf(val.toLowerCase()) !== -1;
+          } else if (op === 'equals') {
+            match = isNumFilter && !isNaN(numCell) ? numCell === numVal : text.toLowerCase() === val.toLowerCase();
+          } else if (op === 'not_equals') {
+            match = isNumFilter && !isNaN(numCell) ? numCell !== numVal : text.toLowerCase() !== val.toLowerCase();
+          } else if (op === 'gt') {
+            match = !isNaN(numCell) && numCell > numVal;
+          } else if (op === 'gte') {
+            match = !isNaN(numCell) && numCell >= numVal;
+          } else if (op === 'lt') {
+            match = !isNaN(numCell) && numCell < numVal;
+          } else if (op === 'lte') {
+            match = !isNaN(numCell) && numCell <= numVal;
+          }
+
+          if (match) {
+            tr.classList.remove('sideview-row-filtered');
+            matchedCount++;
+          } else {
+            tr.classList.add('sideview-row-filtered');
+          }
+        });
+      }
 
       btn.classList.add('active');
 
@@ -1297,7 +1747,7 @@ function sendToShiny(name, value) {
       var filterCode = cardName + ' %>%\n  dplyr::filter(' + condExpr + ')';
       self.activateDrawerTab('filter');
       self.updateDrawerCode(filterCode);
-      self.showToast('Filtered ' + colName + ' (' + matchedCount + '/' + rows.length + ' rows)', 'success');
+      self.showToast('Filtered ' + colName + ' (' + matchedCount + '/' + totalRowsCount + ' rows)', 'success');
 
       sendToShiny('column_filtered', {
         table: cardName,
@@ -1422,9 +1872,12 @@ function sendToShiny(name, value) {
 
   // Export globally
   global.initSideview = initSideview;
+  global.VirtualTable = VirtualTable;
+  global.SideviewVirtualTable = VirtualTable;
   global.Sideview = {
     init: initSideview,
-    Engine: SideviewEngine
+    Engine: SideviewEngine,
+    VirtualTable: VirtualTable
   };
 
-})(typeof window !== 'undefined' ? window : this);
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

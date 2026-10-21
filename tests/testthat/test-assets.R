@@ -149,3 +149,158 @@ test_that("sideview.js resets activePort in clearOperations and escapes column n
   expect_match(js, "activePort", info = "Must handle activePort in clearOperations")
   expect_match(js, "escapeIdent|escapeCol", info = "Must escape column identifiers")
 })
+
+
+test_that("sideview.js and sideview.css implement DOM virtualization for high row counts", {
+  js <- read_asset("sideview.js")
+  css <- read_asset("sideview.css")
+
+  # VirtualTable definition and window exposure
+  expect_match(js, "function\\s+VirtualTable|class\\s+VirtualTable",
+               info = "sideview.js must define VirtualTable constructor or class")
+  expect_match(js, "SideviewVirtualTable|Sideview\\.VirtualTable",
+               info = "sideview.js must expose VirtualTable on window or Sideview namespace")
+
+  # Virtual scrolling calculations and spacer logic
+  expect_match(js, "sideview-virtual-spacer",
+               info = "sideview.js must use virtual spacer classes")
+  expect_match(js, "rowHeight",
+               info = "sideview.js must configure or calculate rowHeight")
+  expect_match(js, "scrollTop",
+               info = "sideview.js must listen to scroll events and calculate scrollTop offset")
+
+  # CSS classes for virtual scrolling
+  expect_match(css, "\\.sideview-virtual-spacer",
+               info = "sideview.css must contain .sideview-virtual-spacer rule")
+  expect_match(css, "\\.sideview-table-viewport",
+               info = "sideview.css must contain .sideview-table-viewport rule")
+  expect_match(css, "height:\\s*28px|min-height|max-height",
+               info = "sideview.css must constrain virtual row height or viewport")
+
+  # Node syntax check
+  node_path <- Sys.which("node")
+  if (nzchar(node_path)) {
+    js_path <- find_asset("sideview.js")
+    status <- system2(node_path, c("-c", shQuote(js_path)), stdout = TRUE, stderr = TRUE)
+    attr_status <- attr(status, "status")
+    expect_true(is.null(attr_status) || attr_status == 0,
+                info = paste("sideview.js syntax error:", paste(status, collapse = "\n")))
+  }
+})
+
+
+test_that("VirtualTable JavaScript engine executes 100k row virtualization correctly in Node runtime", {
+  node_path <- Sys.which("node")
+  skip_if(!nzchar(node_path), "Node.js not available for JavaScript runtime verification")
+
+  js_path <- find_asset("sideview.js")
+  test_script <- paste0(
+    "class MockElement {",
+    "  constructor(tag) {",
+    "    this.tagName = (tag || 'DIV').toUpperCase();",
+    "    this.classList = new Set();",
+    "    this.classList.add = (...cs) => cs.forEach(c => this.classList[c] = true);",
+    "    this.classList.remove = (c) => delete this.classList[c];",
+    "    this.classList.contains = (c) => !!this.classList[c];",
+    "    this.style = {};",
+    "    this.children = [];",
+    "    this.dataset = {};",
+    "    this.scrollTop = 0;",
+    "    this.clientHeight = 380;",
+    "    this.scrollHeight = 380;",
+    "    this._listeners = {};",
+    "  }",
+    "  set className(val) {",
+    "    this._className = val;",
+    "    (val || '').split(/\\s+/).forEach(c => { if (c) this.classList.add(c); });",
+    "  }",
+    "  get className() { return this._className || ''; }",
+    "  _relink() {",
+    "    for (let i = 0; i < this.children.length; i++) {",
+    "      this.children[i].parentElement = this;",
+    "      this.children[i].parentNode = this;",
+    "      this.children[i].previousSibling = i > 0 ? this.children[i - 1] : null;",
+    "      this.children[i].nextSibling = i < this.children.length - 1 ? this.children[i + 1] : null;",
+    "    }",
+    "  }",
+    "  appendChild(child) {",
+    "    this.children.push(child);",
+    "    this._relink();",
+    "    return child;",
+    "  }",
+    "  removeChild(child) {",
+    "    const idx = this.children.indexOf(child);",
+    "    if (idx !== -1) {",
+    "      this.children.splice(idx, 1);",
+    "      child.parentElement = null;",
+    "      child.parentNode = null;",
+    "      child.previousSibling = null;",
+    "      child.nextSibling = null;",
+    "      this._relink();",
+    "    }",
+    "    return child;",
+    "  }",
+    "  insertBefore(newNode, refNode) {",
+    "    if (newNode.tagName === 'FRAGMENT') {",
+    "      const kids = newNode.children.slice();",
+    "      for (const k of kids) this.insertBefore(k, refNode);",
+    "      return newNode;",
+    "    }",
+    "    const idx = refNode ? this.children.indexOf(refNode) : -1;",
+    "    if (idx !== -1) this.children.splice(idx, 0, newNode);",
+    "    else this.children.push(newNode);",
+    "    this._relink();",
+    "    return newNode;",
+    "  }",
+    "  querySelector(sel) {",
+    "    if (sel === 'tbody') return this.children.find(c => c.tagName === 'TBODY');",
+    "    if (sel === 'thead th') return this.children.find(c => c.tagName === 'THEAD');",
+    "    return null;",
+    "  }",
+    "  querySelectorAll(sel) {",
+    "    if (sel === 'thead th') return [];",
+    "    if (sel.includes('tr')) return this.children.filter(c => c.tagName === 'TR');",
+    "    return [];",
+    "  }",
+    "  closest(sel) { return this; }",
+    "  addEventListener(event, fn) {",
+    "    this._listeners[event] = this._listeners[event] || [];",
+    "    this._listeners[event].push(fn);",
+    "  }",
+    "}",
+    "global.document = {",
+    "  createElement: (tag) => new MockElement(tag),",
+    "  createDocumentFragment: () => new MockElement('FRAGMENT')",
+    "};",
+    "global.requestAnimationFrame = (cb) => cb();",
+    "require('", gsub("\\\\", "/", normalizePath(js_path)), "');",
+    "const VT = global.SideviewVirtualTable;",
+    "if (!VT) throw new Error('SideviewVirtualTable not found');",
+    "const rowCount = 100000;",
+    "const colA = new Array(rowCount);",
+    "const colB = new Array(rowCount);",
+    "for (let i = 0; i < rowCount; i++) { colA[i] = 'ID_' + i; colB[i] = i * 1.5; }",
+    "const mockTable = new MockElement('TABLE');",
+    "const vt = new VT(mockTable, { data: { id: colA, val: colB }, rowHeight: 28, buffer: 10 });",
+    "if (vt.getRowCount() !== 100000) throw new Error('Incorrect rowCount');",
+    "const rowsInitial = vt.tbody.children.filter(c => c.tagName === 'TR' && !c.classList.contains('sideview-virtual-spacer'));",
+    "if (rowsInitial.length < 20 || rowsInitial.length > 40) throw new Error('Initial rendered row buffer count mismatch');",
+    "vt.scrollContainer.scrollTop = 1400000;",
+    "vt.render();",
+    "const rowsMid = vt.tbody.children.filter(c => c.tagName === 'TR' && !c.classList.contains('sideview-virtual-spacer'));",
+    "if (rowsMid.length < 20 || rowsMid.length > 40) throw new Error('Mid rendered row buffer count mismatch');",
+    "vt.scrollContainer.scrollTop = 0;",
+    "vt.sort(1, 'val', 'desc');",
+    "const topRowSorted = vt.tbody.children.find(c => c.tagName === 'TR' && !c.classList.contains('sideview-virtual-spacer'));",
+    "if (parseInt(topRowSorted.dataset.rowIndex, 10) !== 99999) throw new Error('Sort desc failed');",
+    "const matches = vt.filter(0, 'id', 'equals', 'ID_42');",
+    "if (matches !== 1) throw new Error('Filter equals failed');",
+    "console.log('SUCCESS');"
+  )
+
+  status <- system2(node_path, c("-e", shQuote(test_script)), stdout = TRUE, stderr = TRUE)
+  attr_status <- attr(status, "status")
+  expect_true(is.null(attr_status) || attr_status == 0,
+              info = paste("VirtualTable Node execution error:", paste(status, collapse = "\n")))
+  expect_match(paste(status, collapse = "\n"), "SUCCESS")
+})
