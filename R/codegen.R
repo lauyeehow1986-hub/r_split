@@ -597,3 +597,73 @@ sv_code_pivot_wider <- function(df_name = NULL, names_from, values_from, values_
     }
   }
 }
+
+#' Generate tidyverse Code for Grouping and Aggregating Data
+#'
+#' Constructs syntactically valid \code{dplyr::group_by()} and \code{dplyr::summarise()}
+#' pipelines with identifier escaping, customizable summary metrics, and reproducible
+#' grouping behavior via \code{.groups = 'drop'}.
+#'
+#' @param df_name Name of the data frame (optional; can be NULL for intermediate piped pipeline segments).
+#' @param group_cols Character vector of grouping column name(s).
+#' @param summary_exprs Named character vector or named list of aggregation expressions
+#'   (e.g., \code{c(total = "dplyr::n()", avg = "mean(val, na.rm = TRUE)")}).
+#' @param pipe Logical; if TRUE, uses pipe syntax `df %>% dplyr::group_by(...) %>% dplyr::summarise(...)`. Defaults to `FALSE`.
+#' @return A character string of R code.
+#' @export
+sv_code_group_summarize <- function(df_name = NULL, group_cols, summary_exprs, pipe = FALSE) {
+  if (missing(group_cols) || is.null(group_cols) || length(group_cols) == 0) {
+    stop("`group_cols` must not be empty.")
+  }
+  if (anyNA(group_cols) || any(!nzchar(as.character(group_cols)))) {
+    stop("`group_cols` must not contain NA or empty strings.")
+  }
+  if (missing(summary_exprs) || is.null(summary_exprs) || length(summary_exprs) == 0) {
+    stop("`summary_exprs` must not be empty.")
+  }
+  if (!is.character(summary_exprs) && !is.list(summary_exprs)) {
+    stop("`summary_exprs` must be a named character vector or named list.")
+  }
+  nms <- names(summary_exprs)
+  if (is.null(nms) || any(is.na(nms)) || any(!nzchar(nms))) {
+    stop("All elements in `summary_exprs` must be named.")
+  }
+  vals <- as.character(unlist(summary_exprs))
+  if (anyNA(vals) || any(!nzchar(vals))) {
+    stop("`summary_exprs` values must not be empty or NA.")
+  }
+  if (!is.null(df_name) && length(df_name) > 1) {
+    stop("`df_name` must be a single character string or NULL.")
+  }
+
+  esc_groups <- sv_escape_ident(group_cols)
+  group_str <- paste(esc_groups, collapse = ", ")
+
+  expr_pairs <- character(0)
+  for (nm in names(summary_exprs)) {
+    expr_pairs <- c(expr_pairs, sprintf("%s = %s", sv_escape_ident(nm), as.character(summary_exprs[[nm]])))
+  }
+  summary_str <- paste(expr_pairs, collapse = ",\n    ")
+
+  has_df <- !is.null(df_name) && length(df_name) == 1 && !is.na(df_name) && nzchar(df_name)
+  esc_df <- if (has_df) sv_escape_ident(df_name) else NULL
+
+  if (pipe) {
+    if (!is.null(esc_df)) {
+      sprintf("%s %%>%%\n  dplyr::group_by(%s) %%>%%\n  dplyr::summarise(\n    %s,\n    .groups = 'drop'\n  )",
+              esc_df, group_str, summary_str)
+    } else {
+      sprintf("dplyr::group_by(%s) %%>%%\n  dplyr::summarise(\n    %s,\n    .groups = 'drop'\n  )",
+              group_str, summary_str)
+    }
+  } else {
+    if (!is.null(esc_df)) {
+      sprintf("dplyr::summarise(\n  dplyr::group_by(%s, %s),\n  %s,\n  .groups = 'drop'\n)",
+              esc_df, group_str, summary_str)
+    } else {
+      sprintf("dplyr::summarise(\n  dplyr::group_by(%s),\n  %s,\n  .groups = 'drop'\n)",
+              group_str, summary_str)
+    }
+  }
+}
+

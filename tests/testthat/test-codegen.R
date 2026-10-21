@@ -471,3 +471,102 @@ test_that("sv_code_pivot_wider generates valid tidyr code with options", {
   expect_error(sv_code_pivot_wider("df", names_from = "key", values_from = "val", values_fn = c(a = "mean", "sum")),
                "All elements in `values_fn` must be named.")
 })
+
+
+test_that("sv_code_group_summarize generates valid dplyr group_by and summarise pipelines", {
+  # 1. Direct call mode (pipe = FALSE) with single group column and single summary expression
+  c1 <- sv_code_group_summarize("patients", group_cols = "dept", summary_exprs = c(total = "dplyr::n()"))
+  expected_c1 <- "dplyr::summarise(\n  dplyr::group_by(patients, dept),\n  total = dplyr::n(),\n  .groups = 'drop'\n)"
+  expect_equal(c1, expected_c1)
+  expect_silent(parse(text = c1))
+
+  # 2. Piped mode (pipe = TRUE) with multiple group columns and multiple summary expressions
+  c2 <- sv_code_group_summarize(
+    "patients",
+    group_cols = c("dept", "gender"),
+    summary_exprs = c(total = "dplyr::n()", avg_age = "mean(age, na.rm = TRUE)"),
+    pipe = TRUE
+  )
+  expected_c2 <- "patients %>%\n  dplyr::group_by(dept, gender) %>%\n  dplyr::summarise(\n    total = dplyr::n(),\n    avg_age = mean(age, na.rm = TRUE),\n    .groups = 'drop'\n  )"
+  expect_equal(c2, expected_c2)
+  expect_silent(parse(text = c2))
+
+  # 3. Summary expressions provided as a named list
+  c3 <- sv_code_group_summarize(
+    "lab_panels",
+    group_cols = "patient_id",
+    summary_exprs = list(
+      total_visits = "dplyr::n()",
+      avg_glucose  = "mean(glucose, na.rm = TRUE)",
+      max_glucose  = "max(glucose, na.rm = TRUE)"
+    ),
+    pipe = TRUE
+  )
+  expected_c3 <- "lab_panels %>%\n  dplyr::group_by(patient_id) %>%\n  dplyr::summarise(\n    total_visits = dplyr::n(),\n    avg_glucose = mean(glucose, na.rm = TRUE),\n    max_glucose = max(glucose, na.rm = TRUE),\n    .groups = 'drop'\n  )"
+  expect_equal(c3, expected_c3)
+  expect_silent(parse(text = c3))
+
+  # 4. Non-syntactic df_name, group columns, and summary metric names with backtick escaping
+  c4 <- sv_code_group_summarize(
+    "patient records",
+    group_cols = c("study group", "visit number"),
+    summary_exprs = c("patient count" = "dplyr::n()", "mean systolic" = "mean(`systolic bp`, na.rm = TRUE)"),
+    pipe = TRUE
+  )
+  expected_c4 <- "`patient records` %>%\n  dplyr::group_by(`study group`, `visit number`) %>%\n  dplyr::summarise(\n    `patient count` = dplyr::n(),\n    `mean systolic` = mean(`systolic bp`, na.rm = TRUE),\n    .groups = 'drop'\n  )"
+  expect_equal(c4, expected_c4)
+  expect_silent(parse(text = c4))
+
+  # 5. Non-syntactic names in direct call mode (pipe = FALSE)
+  c5 <- sv_code_group_summarize(
+    "patient records",
+    group_cols = "test-result",
+    summary_exprs = c("case count" = "dplyr::n()"),
+    pipe = FALSE
+  )
+  expected_c5 <- "dplyr::summarise(\n  dplyr::group_by(`patient records`, `test-result`),\n  `case count` = dplyr::n(),\n  .groups = 'drop'\n)"
+  expect_equal(c5, expected_c5)
+  expect_silent(parse(text = c5))
+
+  # 6. Intermediate piped pipeline segment with df_name = NULL (pipe = TRUE)
+  c6 <- sv_code_group_summarize(
+    NULL,
+    group_cols = c("dept", "site"),
+    summary_exprs = c(n = "dplyr::n()"),
+    pipe = TRUE
+  )
+  expected_c6 <- "dplyr::group_by(dept, site) %>%\n  dplyr::summarise(\n    n = dplyr::n(),\n    .groups = 'drop'\n  )"
+  expect_equal(c6, expected_c6)
+  expect_silent(parse(text = c6))
+
+  # 7. Intermediate segment with df_name = NULL (pipe = FALSE)
+  c7 <- sv_code_group_summarize(
+    NULL,
+    group_cols = "dept",
+    summary_exprs = c(n = "dplyr::n()"),
+    pipe = FALSE
+  )
+  expected_c7 <- "dplyr::summarise(\n  dplyr::group_by(dept),\n  n = dplyr::n(),\n  .groups = 'drop'\n)"
+  expect_equal(c7, expected_c7)
+  expect_silent(parse(text = c7))
+
+  # 8. Defensive error checking
+  expect_error(sv_code_group_summarize(), "`group_cols` must not be empty")
+  expect_error(sv_code_group_summarize("df"), "`group_cols` must not be empty")
+  expect_error(sv_code_group_summarize("df", group_cols = character(0), summary_exprs = c(n = "n()")), "`group_cols` must not be empty")
+  expect_error(sv_code_group_summarize("df", group_cols = NULL, summary_exprs = c(n = "n()")), "`group_cols` must not be empty")
+  expect_error(sv_code_group_summarize("df", group_cols = c("a", ""), summary_exprs = c(n = "n()")), "`group_cols` must not contain NA or empty")
+  expect_error(sv_code_group_summarize("df", group_cols = c("a", NA), summary_exprs = c(n = "n()")), "`group_cols` must not contain NA or empty")
+
+  expect_error(sv_code_group_summarize("df", group_cols = "a"), "`summary_exprs` must not be empty")
+  expect_error(sv_code_group_summarize("df", group_cols = "a", summary_exprs = character(0)), "`summary_exprs` must not be empty")
+  expect_error(sv_code_group_summarize("df", group_cols = "a", summary_exprs = NULL), "`summary_exprs` must not be empty")
+  expect_error(sv_code_group_summarize("df", group_cols = "a", summary_exprs = 123), "`summary_exprs` must be a named character vector or named list")
+  expect_error(sv_code_group_summarize("df", group_cols = "a", summary_exprs = c("dplyr::n()")), "All elements in `summary_exprs` must be named")
+  expect_error(sv_code_group_summarize("df", group_cols = "a", summary_exprs = c(tot = "dplyr::n()", "mean(x)")), "All elements in `summary_exprs` must be named")
+  expect_error(sv_code_group_summarize("df", group_cols = "a", summary_exprs = c(tot = "")), "`summary_exprs` values must not be empty or NA")
+  expect_error(sv_code_group_summarize("df", group_cols = "a", summary_exprs = c(tot = NA_character_)), "`summary_exprs` values must not be empty or NA")
+
+  expect_error(sv_code_group_summarize(c("df1", "df2"), group_cols = "a", summary_exprs = c(n = "n()")), "`df_name` must be a single character string or NULL")
+})
+
