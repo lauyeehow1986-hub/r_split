@@ -398,12 +398,7 @@ sv_normalize.tbl_duckdb_connection <- function(x, name = NULL, id = NULL, ...) {
     character(0)
   }
 
-  nr <- tryCatch(
-    as.integer(dplyr::pull(dplyr::count(x))),
-    error = function(e) {
-      if (is.data.frame(preview)) nrow(preview) else NA_integer_
-    }
-  )
+  nr <- tryCatch(as.numeric(dplyr::pull(dplyr::count(x))), error = function(e) NA_real_)
   nc <- if (!is.null(col_names)) length(col_names) else ncol(preview)
   dims <- c(nr, nc)
 

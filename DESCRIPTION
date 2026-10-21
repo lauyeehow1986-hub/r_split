@@ -25,6 +25,7 @@ Suggests:
     testthat (>= 3.0.0),
     arrow,
     duckdb,
+    DBI,
     gt,
     flextable,
     knitr,
