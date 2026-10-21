@@ -362,3 +362,106 @@ test_that("sv_code_arrange generates valid tidyverse arrange pipelines", {
   # Errors on empty column
   expect_error(sv_code_arrange("patients", character(0)), "must not be empty")
 })
+
+
+test_that("sv_code_pivot_longer generates valid tidyr code and escapes identifiers", {
+  # Direct function call mode (pipe = FALSE) with single column
+  c1 <- sv_code_pivot_longer("my_data", cols = "score")
+  expect_equal(c1, 'tidyr::pivot_longer(my_data, cols = score, names_to = "name", values_to = "value")')
+  expect_silent(parse(text = c1))
+
+  # Pipe mode with multiple columns
+  c2 <- sv_code_pivot_longer("my_data", cols = c("q1", "q2", "q3"), pipe = TRUE)
+  expect_equal(c2, 'my_data %>% tidyr::pivot_longer(cols = c(q1, q2, q3), names_to = "name", values_to = "value")')
+  expect_silent(parse(text = c2))
+
+  # Custom names_to and values_to
+  c3 <- sv_code_pivot_longer("sales", cols = c("2021", "2022"), names_to = "year", values_to = "revenue", pipe = TRUE)
+  expect_equal(c3, 'sales %>% tidyr::pivot_longer(cols = c(`2021`, `2022`), names_to = "year", values_to = "revenue")')
+  expect_silent(parse(text = c3))
+
+  # Non-syntactic column names and data frame name with backtick escaping
+  c4 <- sv_code_pivot_longer("patient records", cols = c("blood pressure", "heart rate"), pipe = TRUE)
+  expect_equal(c4, '`patient records` %>% tidyr::pivot_longer(cols = c(`blood pressure`, `heart rate`), names_to = "name", values_to = "value")')
+  expect_silent(parse(text = c4))
+
+  # Single non-syntactic column without c() wrapper
+  c5 <- sv_code_pivot_longer("df", cols = "weird-name", pipe = FALSE)
+  expect_equal(c5, 'tidyr::pivot_longer(df, cols = `weird-name`, names_to = "name", values_to = "value")')
+  expect_silent(parse(text = c5))
+
+  # df_name = NULL in pipe mode
+  c6 <- sv_code_pivot_longer(NULL, cols = c("a", "b"), pipe = TRUE)
+  expect_equal(c6, 'tidyr::pivot_longer(cols = c(a, b), names_to = "name", values_to = "value")')
+  expect_silent(parse(text = c6))
+
+  # df_name = NULL in non-pipe mode
+  c7 <- sv_code_pivot_longer(NULL, cols = "a", pipe = FALSE)
+  expect_equal(c7, 'tidyr::pivot_longer(cols = a, names_to = "name", values_to = "value")')
+  expect_silent(parse(text = c7))
+
+  # Error handling: cols empty or missing
+  expect_error(sv_code_pivot_longer("df", cols = character(0)), "must not be empty")
+  expect_error(sv_code_pivot_longer("df", cols = NULL), "must not be empty")
+  expect_error(sv_code_pivot_longer("df"), "must not be empty")
+  expect_error(sv_code_pivot_longer("df", cols = c("a", "")), "must not contain NA or empty")
+  expect_error(sv_code_pivot_longer("df", cols = c("a", NA)), "must not contain NA or empty")
+})
+
+test_that("sv_code_pivot_wider generates valid tidyr code with options", {
+  # Direct function call mode (pipe = FALSE) with standard columns
+  w1 <- sv_code_pivot_wider("measurements", names_from = "variable", values_from = "value")
+  expect_equal(w1, "tidyr::pivot_wider(measurements, names_from = variable, values_from = value)")
+  expect_silent(parse(text = w1))
+
+  # Pipe mode
+  w2 <- sv_code_pivot_wider("measurements", names_from = "variable", values_from = "value", pipe = TRUE)
+  expect_equal(w2, "measurements %>% tidyr::pivot_wider(names_from = variable, values_from = value)")
+  expect_silent(parse(text = w2))
+
+  # Non-syntactic columns and df_name escaping
+  w3 <- sv_code_pivot_wider("my data", names_from = "var name", values_from = "val 1", pipe = TRUE)
+  expect_equal(w3, "`my data` %>% tidyr::pivot_wider(names_from = `var name`, values_from = `val 1`)")
+  expect_silent(parse(text = w3))
+
+  # Multiple names_from and values_from
+  w4 <- sv_code_pivot_wider("df", names_from = c("k1", "k2"), values_from = c("v1", "v2"), pipe = TRUE)
+  expect_equal(w4, "df %>% tidyr::pivot_wider(names_from = c(k1, k2), values_from = c(v1, v2))")
+  expect_silent(parse(text = w4))
+
+  # Optional values_fn argument (e.g. mean, sum, dplyr::first)
+  w5 <- sv_code_pivot_wider("df", names_from = "key", values_from = "val", values_fn = "mean", pipe = TRUE)
+  expect_equal(w5, "df %>% tidyr::pivot_wider(names_from = key, values_from = val, values_fn = mean)")
+  expect_silent(parse(text = w5))
+
+  w6 <- sv_code_pivot_wider("df", names_from = "key", values_from = "val", values_fn = "sum")
+  expect_equal(w6, "tidyr::pivot_wider(df, names_from = key, values_from = val, values_fn = sum)")
+  expect_silent(parse(text = w6))
+
+  w7 <- sv_code_pivot_wider("df", names_from = "key", values_from = "val", values_fn = "dplyr::first", pipe = TRUE)
+  expect_equal(w7, "df %>% tidyr::pivot_wider(names_from = key, values_from = val, values_fn = dplyr::first)")
+  expect_silent(parse(text = w7))
+
+  # values_fn as named vector/list
+  w8 <- sv_code_pivot_wider("df", names_from = "key", values_from = c("v1", "v2"), 
+                            values_fn = c(v1 = "mean", v2 = "sum"), pipe = TRUE)
+  expect_equal(w8, "df %>% tidyr::pivot_wider(names_from = key, values_from = c(v1, v2), values_fn = list(v1 = mean, v2 = sum))")
+  expect_silent(parse(text = w8))
+
+  # df_name = NULL in pipe and non-pipe modes
+  w9 <- sv_code_pivot_wider(NULL, names_from = "k", values_from = "v", pipe = TRUE)
+  expect_equal(w9, "tidyr::pivot_wider(names_from = k, values_from = v)")
+  expect_silent(parse(text = w9))
+
+  w10 <- sv_code_pivot_wider(NULL, names_from = "k", values_from = "v", pipe = FALSE)
+  expect_equal(w10, "tidyr::pivot_wider(names_from = k, values_from = v)")
+  expect_silent(parse(text = w10))
+
+  # Error handling: required arguments missing or invalid
+  expect_error(sv_code_pivot_wider("df", values_from = "val"), "must not be empty")
+  expect_error(sv_code_pivot_wider("df", names_from = character(0), values_from = "val"), "must not be empty")
+  expect_error(sv_code_pivot_wider("df", names_from = "key"), "must not be empty")
+  expect_error(sv_code_pivot_wider("df", names_from = "key", values_from = character(0)), "must not be empty")
+  expect_error(sv_code_pivot_wider("df", names_from = c("key", ""), values_from = "val"), "must not contain NA or empty")
+  expect_error(sv_code_pivot_wider("df", names_from = "key", values_from = c("val", NA)), "must not contain NA or empty")
+})

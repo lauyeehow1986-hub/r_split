@@ -439,3 +439,153 @@ sv_code_recode <- function(df_name, col, crosswalk, default = NULL,
   
   sv_code_mutate(df_name = df_name, new_col = col, expr = expr, pipe = pipe)
 }
+
+
+#' Generate tidyverse Code for Reshaping Data from Wide to Long
+#'
+#' Constructs syntactically valid \code{tidyr::pivot_longer()} calls with proper
+#' identifier escaping and support for both piped workflows and direct calls.
+#'
+#' @param df_name Name of the data frame (optional; can be NULL for piped workflows).
+#' @param cols Character vector of column name(s) to pivot into longer format.
+#' @param names_to Character string specifying the name of the column to create from the data stored in the column names of \code{cols}. Defaults to \code{"name"}.
+#' @param values_to Character string specifying the name of the column to create from the data stored in cell values. Defaults to \code{"value"}.
+#' @param pipe Logical; if TRUE, uses pipe syntax \code{df %>% tidyr::pivot_longer(...)}. Defaults to \code{FALSE}.
+#' @return A character string of R code.
+#' @export
+sv_code_pivot_longer <- function(df_name = NULL, cols, names_to = "name", values_to = "value", pipe = FALSE) {
+  if (missing(cols) || is.null(cols) || length(cols) == 0) {
+    stop("`cols` must not be empty.")
+  }
+  if (anyNA(cols) || any(!nzchar(as.character(cols)))) {
+    stop("`cols` must not contain NA or empty strings.")
+  }
+  if (!is.null(df_name) && length(df_name) > 1) {
+    stop("`df_name` must be a single character string or NULL.")
+  }
+  if (is.null(names_to) || length(names_to) == 0 || anyNA(names_to) || any(!nzchar(as.character(names_to)))) {
+    stop("`names_to` must not be empty or contain NA.")
+  }
+  if (is.null(values_to) || length(values_to) == 0 || anyNA(values_to) || any(!nzchar(as.character(values_to)))) {
+    stop("`values_to` must not be empty or contain NA.")
+  }
+
+  esc_cols <- sv_escape_ident(cols)
+  cols_arg <- if (length(esc_cols) == 1) {
+    sprintf("cols = %s", esc_cols)
+  } else {
+    sprintf("cols = c(%s)", paste(esc_cols, collapse = ", "))
+  }
+
+  names_to_arg <- if (length(names_to) == 1) {
+    sprintf("names_to = %s", deparse1(names_to))
+  } else {
+    sprintf("names_to = c(%s)", paste(vapply(names_to, deparse1, character(1)), collapse = ", "))
+  }
+
+  values_to_arg <- if (length(values_to) == 1) {
+    sprintf("values_to = %s", deparse1(values_to))
+  } else {
+    sprintf("values_to = c(%s)", paste(vapply(values_to, deparse1, character(1)), collapse = ", "))
+  }
+
+  args <- paste(c(cols_arg, names_to_arg, values_to_arg), collapse = ", ")
+
+  has_df <- !is.null(df_name) && length(df_name) == 1 && !is.na(df_name) && nzchar(df_name)
+  esc_df <- if (has_df) sv_escape_ident(df_name) else NULL
+
+  if (pipe) {
+    if (!is.null(esc_df)) {
+      sprintf("%s %%>%% tidyr::pivot_longer(%s)", esc_df, args)
+    } else {
+      sprintf("tidyr::pivot_longer(%s)", args)
+    }
+  } else {
+    if (!is.null(esc_df)) {
+      sprintf("tidyr::pivot_longer(%s, %s)", esc_df, args)
+    } else {
+      sprintf("tidyr::pivot_longer(%s)", args)
+    }
+  }
+}
+
+#' Generate tidyverse Code for Reshaping Data from Long to Wide
+#'
+#' Constructs syntactically valid \code{tidyr::pivot_wider()} calls with proper
+#' identifier escaping and optional aggregation functions.
+#'
+#' @param df_name Name of the data frame (optional; can be NULL for piped workflows).
+#' @param names_from Character vector of column name(s) to get the name of the output column from.
+#' @param values_from Character vector of column name(s) to get the cell values from.
+#' @param values_fn Optional function name (character string or named vector/list) to apply to values. Defaults to \code{NULL}.
+#' @param pipe Logical; if TRUE, uses pipe syntax \code{df %>% tidyr::pivot_wider(...)}. Defaults to \code{FALSE}.
+#' @return A character string of R code.
+#' @export
+sv_code_pivot_wider <- function(df_name = NULL, names_from, values_from, values_fn = NULL, pipe = FALSE) {
+  if (missing(names_from) || is.null(names_from) || length(names_from) == 0) {
+    stop("`names_from` must not be empty.")
+  }
+  if (anyNA(names_from) || any(!nzchar(as.character(names_from)))) {
+    stop("`names_from` must not contain NA or empty strings.")
+  }
+  if (missing(values_from) || is.null(values_from) || length(values_from) == 0) {
+    stop("`values_from` must not be empty.")
+  }
+  if (anyNA(values_from) || any(!nzchar(as.character(values_from)))) {
+    stop("`values_from` must not contain NA or empty strings.")
+  }
+  if (!is.null(df_name) && length(df_name) > 1) {
+    stop("`df_name` must be a single character string or NULL.")
+  }
+
+  esc_names <- sv_escape_ident(names_from)
+  names_arg <- if (length(esc_names) == 1) {
+    sprintf("names_from = %s", esc_names)
+  } else {
+    sprintf("names_from = c(%s)", paste(esc_names, collapse = ", "))
+  }
+
+  esc_values <- sv_escape_ident(values_from)
+  values_arg <- if (length(esc_values) == 1) {
+    sprintf("values_from = %s", esc_values)
+  } else {
+    sprintf("values_from = c(%s)", paste(esc_values, collapse = ", "))
+  }
+
+  call_args <- c(names_arg, values_arg)
+
+  if (!is.null(values_fn) && length(values_fn) > 0) {
+    if (is.character(values_fn)) {
+      if (length(values_fn) == 1 && (is.null(names(values_fn)) || names(values_fn) == "")) {
+        if (nzchar(values_fn)) {
+          call_args <- c(call_args, sprintf("values_fn = %s", values_fn))
+        }
+      } else if (!is.null(names(values_fn))) {
+        pairs <- sprintf("%s = %s", sv_escape_ident(names(values_fn)), unname(values_fn))
+        call_args <- c(call_args, sprintf("values_fn = list(%s)", paste(pairs, collapse = ", ")))
+      }
+    } else if (is.list(values_fn) && !is.null(names(values_fn))) {
+      pairs <- sprintf("%s = %s", sv_escape_ident(names(values_fn)), unlist(values_fn))
+      call_args <- c(call_args, sprintf("values_fn = list(%s)", paste(pairs, collapse = ", ")))
+    }
+  }
+
+  args <- paste(call_args, collapse = ", ")
+
+  has_df <- !is.null(df_name) && length(df_name) == 1 && !is.na(df_name) && nzchar(df_name)
+  esc_df <- if (has_df) sv_escape_ident(df_name) else NULL
+
+  if (pipe) {
+    if (!is.null(esc_df)) {
+      sprintf("%s %%>%% tidyr::pivot_wider(%s)", esc_df, args)
+    } else {
+      sprintf("tidyr::pivot_wider(%s)", args)
+    }
+  } else {
+    if (!is.null(esc_df)) {
+      sprintf("tidyr::pivot_wider(%s, %s)", esc_df, args)
+    } else {
+      sprintf("tidyr::pivot_wider(%s)", args)
+    }
+  }
+}
