@@ -1,0 +1,315 @@
+#' Suggest Foreign Key Mappings Across Canvas Cards
+#'
+#' Evaluates pairwise heuristic column relationships across loaded `sideview_card`
+#' objects or tabular data structures, computing a 3-part composite confidence score based
+#' on name similarity (40%), data type compatibility (20%), and Jaccard value overlap (40%).
+#'
+#' @param cards A list of `sideview_card` objects or tabular data frames. Alternatively,
+#'   individual cards or tables can be passed via `...`.
+#' @param ... Additional cards or tables passed as positional arguments.
+#' @param min_confidence Minimum confidence threshold (numeric between 0 and 1) for
+#'   returned suggestions (default `0.6`).
+#'
+#' @return A `data.frame` with columns:
+#'   \describe{
+#'     \item{`from_table`}{Source table or card name.}
+#'     \item{`from_col`}{Source column name.}
+#'     \item{`to_table`}{Destination table or card name.}
+#'     \item{`to_col`}{Destination column name.}
+#'     \item{`confidence`}{Composite confidence score in `[0, 1]`.}
+#'     \item{`reason`}{Human-readable justification describing similarity components.}
+#'   }
+#' @export
+#' @examples
+#' df1 <- data.frame(patient_id = 1:5, age = c(20, 30, 40, 50, 60))
+#' df2 <- data.frame(patient_id = 3:7, score = c(10, 20, 30, 40, 50))
+#' sv_suggest_mappings(list(patients = df1, visits = df2))
+sv_suggest_mappings <- function(cards, ..., min_confidence = 0.6) {
+  if (is.null(cards)) {
+    return(.empty_mappings_result())
+  }
+
+  dots <- list(...)
+  card_list <- if (inherits(cards, "sideview_card") || is.data.frame(cards)) {
+    list(cards)
+  } else if (is.list(cards)) {
+    cards
+  } else {
+    return(.empty_mappings_result())
+  }
+
+  if (length(dots) > 0L) {
+    card_list <- c(card_list, dots)
+  }
+
+  if (length(card_list) < 2L) {
+    return(.empty_mappings_result())
+  }
+
+  # Normalize and filter cards with tabular data
+  valid_cards <- list()
+  for (i in seq_along(card_list)) {
+    item <- card_list[[i]]
+    if (is.null(item)) next
+
+    nm <- names(card_list)[i]
+    default_name <- if (!is.null(nm) && nzchar(trimws(nm))) {
+      trimws(nm)
+    } else {
+      paste0("Table", i)
+    }
+
+    card_obj <- if (inherits(item, "sideview_card")) {
+      if (!is.null(nm) && nzchar(trimws(nm)) &&
+          (!nzchar(item$name) || item$name %in% c("Table", "Data"))) {
+        item$name <- trimws(nm)
+      }
+      item
+    } else if (is.data.frame(item)) {
+      sv_normalize(item, name = default_name)
+    } else {
+      tryCatch(sv_normalize(item, name = default_name), error = function(e) NULL)
+    }
+
+    if (is.null(card_obj)) next
+
+    # Must be a grid card with non-empty data frame
+    if (!is.null(card_obj$data) && is.data.frame(card_obj$data) &&
+        nrow(card_obj$data) > 0L && ncol(card_obj$data) > 0L) {
+      valid_cards[[length(valid_cards) + 1L]] <- card_obj
+    }
+  }
+
+  if (length(valid_cards) < 2L) {
+    return(.empty_mappings_result())
+  }
+
+  min_conf <- if (is.null(min_confidence) || is.na(min_confidence) || min_confidence < 0) {
+    0.0
+  } else {
+    as.numeric(min_confidence)
+  }
+
+  candidates <- list()
+  n_cards <- length(valid_cards)
+
+  # Pairwise iteration across loaded cards (c1, c2)
+  for (i in seq_len(n_cards - 1L)) {
+    for (j in seq.int(i + 1L, n_cards)) {
+      c1 <- valid_cards[[i]]
+      c2 <- valid_cards[[j]]
+
+      df1 <- c1$data
+      df2 <- c2$data
+
+      cols1 <- names(df1)
+      cols2 <- names(df2)
+
+      for (col1 in cols1) {
+        v1 <- df1[[col1]]
+        for (col2 in cols2) {
+          v2 <- df2[[col2]]
+
+          pair_result <- .score_column_pair(col1, v1, col2, v2)
+          if (pair_result$confidence >= min_conf) {
+            candidates[[length(candidates) + 1L]] <- list(
+              from_table = c1$name,
+              from_col = col1,
+              to_table = c2$name,
+              to_col = col2,
+              confidence = pair_result$confidence,
+              reason = pair_result$reason
+            )
+          }
+        }
+      }
+    }
+  }
+
+  if (length(candidates) == 0L) {
+    return(.empty_mappings_result())
+  }
+
+  res <- data.frame(
+    from_table = vapply(candidates, `[[`, character(1), "from_table"),
+    from_col = vapply(candidates, `[[`, character(1), "from_col"),
+    to_table = vapply(candidates, `[[`, character(1), "to_table"),
+    to_col = vapply(candidates, `[[`, character(1), "to_col"),
+    confidence = vapply(candidates, `[[`, numeric(1), "confidence"),
+    reason = vapply(candidates, `[[`, character(1), "reason"),
+    stringsAsFactors = FALSE
+  )
+
+  # Sort by confidence descending, then by table and column names
+  ord <- order(-res$confidence, res$from_table, res$to_table, res$from_col, res$to_col)
+  res <- res[ord, , drop = FALSE]
+  rownames(res) <- NULL
+  res
+}
+
+#' Internal: Return 0-row data.frame with expected mapping schema
+#' @noRd
+.empty_mappings_result <- function() {
+  data.frame(
+    from_table = character(0),
+    from_col = character(0),
+    to_table = character(0),
+    to_col = character(0),
+    confidence = numeric(0),
+    reason = character(0),
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Internal: Score a pair of columns based on name similarity, type compatibility, and Jaccard overlap
+#' @noRd
+.score_column_pair <- function(col1, v1, col2, v2) {
+  name_res <- .compute_name_similarity(col1, col2)
+  type_compat <- .compute_type_compatibility(v1, v2)
+  jaccard <- .compute_jaccard_overlap(v1, v2)
+
+  # Composite score = 0.40 * name_sim + 0.20 * type_compat + 0.40 * jaccard
+  composite <- 0.40 * name_res$similarity + 0.20 * type_compat + 0.40 * jaccard
+  confidence <- round(composite, 4)
+
+  reason <- .build_mapping_reason(col1, col2, name_res, type_compat, jaccard)
+
+  list(
+    confidence = confidence,
+    reason = reason,
+    name_sim = name_res$similarity,
+    type_compat = type_compat,
+    jaccard = jaccard
+  )
+}
+
+#' Internal: Compute Levenshtein distance on sanitized lowercase names with ID suffix bonus
+#' @noRd
+.compute_name_similarity <- function(col1, col2) {
+  s1 <- tolower(trimws(as.character(col1)))
+  s2 <- tolower(trimws(as.character(col2)))
+
+  if (!nzchar(s1) || !nzchar(s2)) {
+    return(list(similarity = 0.0, has_id_suffix = FALSE))
+  }
+
+  has_id1 <- grepl("id$", s1)
+  has_id2 <- grepl("id$", s2)
+
+  if (identical(s1, s2)) {
+    return(list(similarity = 1.0, has_id_suffix = (has_id1 && has_id2)))
+  }
+
+  # Raw string Levenshtein distance
+  dist_raw <- utils::adist(s1, s2)[1, 1]
+  max_len_raw <- max(nchar(s1), nchar(s2))
+  sim_raw <- if (max_len_raw == 0L) 1.0 else 1.0 - (dist_raw / max_len_raw)
+
+  # Cleaned alphanumeric string similarity (handles patient_id vs patientId, patient.id, etc.)
+  s1_clean <- gsub("[^a-z0-9]", "", s1)
+  s2_clean <- gsub("[^a-z0-9]", "", s2)
+  dist_clean <- utils::adist(s1_clean, s2_clean)[1, 1]
+  max_len_clean <- max(nchar(s1_clean), nchar(s2_clean))
+  sim_clean <- if (max_len_clean == 0L) 1.0 else 1.0 - (dist_clean / max_len_clean)
+
+  base_sim <- max(sim_raw, sim_clean)
+
+  # Check ID suffixes (id$)
+  has_clean_id1 <- grepl("id$", s1_clean)
+  has_clean_id2 <- grepl("id$", s2_clean)
+
+  has_id_suffix <- (has_id1 || has_clean_id1) && (has_id2 || has_clean_id2)
+  bonus <- if (has_id_suffix) 0.20 else 0.0
+
+  final_sim <- min(1.0, max(0.0, base_sim + bonus))
+  list(similarity = final_sim, has_id_suffix = has_id_suffix)
+}
+
+#' Internal: Compute type compatibility score
+#' @noRd
+.compute_type_compatibility <- function(v1, v2) {
+  if (!is.atomic(v1) || !is.atomic(v2)) {
+    return(0.0)
+  }
+
+  c1 <- class(v1)[1]
+  c2 <- class(v2)[1]
+
+  if (identical(c1, c2)) {
+    return(1.0)
+  }
+
+  num_types <- c("numeric", "integer", "double")
+  if (c1 %in% num_types && c2 %in% num_types) {
+    return(0.9)
+  }
+
+  char_types <- c("character", "factor")
+  if (c1 %in% char_types && c2 %in% char_types) {
+    return(0.9)
+  }
+
+  date_types <- c("Date", "POSIXct", "POSIXlt", "POSIXt")
+  if (c1 %in% date_types && c2 %in% date_types) {
+    return(0.9)
+  }
+
+  0.0
+}
+
+#' Internal: Compute Jaccard value overlap
+#' @noRd
+.compute_jaccard_overlap <- function(v1, v2) {
+  if (!is.atomic(v1) || !is.atomic(v2)) {
+    return(0.0)
+  }
+
+  clean1 <- v1[!is.na(v1)]
+  clean2 <- v2[!is.na(v2)]
+
+  if (length(clean1) == 0L || length(clean2) == 0L) {
+    return(0.0)
+  }
+
+  u1 <- unique(clean1)
+  u2 <- unique(clean2)
+
+  intersection_len <- length(intersect(u1, u2))
+  union_len <- length(union(u1, u2))
+
+  if (union_len == 0L) {
+    0.0
+  } else {
+    intersection_len / union_len
+  }
+}
+
+#' Internal: Format reason string
+#' @noRd
+.build_mapping_reason <- function(col1, col2, name_res, type_compat, jaccard) {
+  name_part <- if (tolower(col1) == tolower(col2)) {
+    "Exact name match"
+  } else if (name_res$similarity >= 0.70) {
+    "High name similarity"
+  } else if (name_res$similarity >= 0.40) {
+    "Partial name match"
+  } else {
+    "Low name similarity"
+  }
+
+  if (name_res$has_id_suffix) {
+    name_part <- paste0(name_part, " with ID suffix")
+  }
+
+  type_part <- if (type_compat >= 1.0) {
+    "identical types"
+  } else if (type_compat >= 0.9) {
+    "compatible types"
+  } else {
+    "incompatible types"
+  }
+
+  overlap_part <- sprintf("%.0f%% value overlap", jaccard * 100)
+
+  paste(name_part, type_part, overlap_part, sep = "; ")
+}
