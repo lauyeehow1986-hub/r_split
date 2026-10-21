@@ -8,3 +8,7 @@
 
 # RStudio files
 .Rproj.user/
+
+# Test artifacts
+artifacts/
+tests/testthat/artifacts/

@@ -23,6 +23,7 @@ Imports:
     rstudioapi
 Suggests:
     testthat (>= 3.0.0),
+    shinytest2,
     arrow,
     duckdb,
     DBI,

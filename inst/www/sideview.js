@@ -1211,6 +1211,7 @@ function sendToShiny(name, value) {
   SideviewEngine.prototype.setupCardDrag = function (cardEl, cardMeta) {
     var self = this;
     var header = cardEl.querySelector('.sideview-card-header');
+    if (!header) return;
 
     var isDragging = false;
     var startPointerX = 0;
@@ -1218,12 +1219,14 @@ function sendToShiny(name, value) {
     var startCardX = 0;
     var startCardY = 0;
 
-    header.addEventListener('pointerdown', function (e) {
+    function startDrag(e) {
       if (e.target.closest('button') || e.target.closest('input')) return;
 
       isDragging = true;
       cardEl.classList.add('is-dragging');
-      header.setPointerCapture(e.pointerId);
+      if (header.setPointerCapture && e.pointerId !== undefined) {
+        try { header.setPointerCapture(e.pointerId); } catch (err) {}
+      }
 
       var scale = self.panzoom ? self.panzoom.getScale() : 1;
       startPointerX = e.clientX;
@@ -1293,10 +1296,16 @@ function sendToShiny(name, value) {
         if (!isDragging) return;
         isDragging = false;
         cardEl.classList.remove('is-dragging');
-        header.releasePointerCapture(upEvent.pointerId);
+        if (header.releasePointerCapture && upEvent.pointerId !== undefined) {
+          try { header.releasePointerCapture(upEvent.pointerId); } catch (err) {}
+        }
 
         header.removeEventListener('pointermove', onPointerMove);
         header.removeEventListener('pointerup', onPointerUp);
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
+        document.removeEventListener('mousemove', onPointerMove);
+        document.removeEventListener('mouseup', onPointerUp);
 
         sendToShiny('sideview_card_moved', {
           card_id: cardMeta.id,
@@ -1307,7 +1316,14 @@ function sendToShiny(name, value) {
 
       header.addEventListener('pointermove', onPointerMove);
       header.addEventListener('pointerup', onPointerUp);
-    });
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', onPointerUp);
+      document.addEventListener('mousemove', onPointerMove);
+      document.addEventListener('mouseup', onPointerUp);
+    }
+
+    header.addEventListener('pointerdown', startDrag);
+    header.addEventListener('mousedown', startDrag);
   };
 
   /**
@@ -1491,7 +1507,7 @@ function sendToShiny(name, value) {
       var card2Id = card2 ? card2.dataset.cardId : toTable;
 
       var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('class', 'sideview-connector-path sideview-spline-suggested');
+      path.setAttribute('class', 'sideview-connector-path sideview-spline-suggested dashMove');
       path.dataset.suggested = 'true';
       path.dataset.fromTable = fromTable;
       path.dataset.fromCol = fromCol;
@@ -2267,6 +2283,12 @@ function sendToShiny(name, value) {
     }
     var instance = new SideviewEngine(target, options);
     target._sideviewInstance = instance;
+    global.sideviewInitialized = true;
+    global._sideviewInstance = instance;
+    if (typeof window !== 'undefined') {
+      window.sideviewInitialized = true;
+      window._sideviewInstance = instance;
+    }
     return instance;
   }
 

@@ -479,6 +479,7 @@ sideview_ui <- function(cards = list(), title = "Sideview Canvas") {
       function start() {
         if (typeof initSideview === 'function') {
           initSideview('.sideview-container');
+          window.sideviewInitialized = true;
         }
       }
       if (document.readyState === 'loading') {
