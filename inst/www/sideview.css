@@ -1110,3 +1110,105 @@
   font-size: 12px;
   color: var(--sv-text-muted);
 }
+
+
+/* Conversational Multi-Turn AI Copilot Drawer */
+.sideview-chat-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 280px;
+  gap: 8px;
+}
+
+.sideview-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 4px;
+  max-height: 320px;
+  min-height: 180px;
+}
+
+.sideview-chat-bubble {
+  max-width: 90%;
+  padding: 8px 12px;
+  border-radius: var(--sv-radius);
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.sideview-chat-user {
+  align-self: flex-end;
+  background-color: var(--sv-primary);
+  color: #ffffff;
+  border-bottom-right-radius: 2px;
+}
+
+.sideview-chat-assistant {
+  align-self: flex-start;
+  background-color: var(--sv-surface-secondary);
+  color: var(--sv-text);
+  border: 1px solid var(--sv-border-light);
+  border-bottom-left-radius: 2px;
+}
+
+.sideview-chat-code {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 8px 10px;
+  border-radius: var(--sv-radius-sm);
+  font-family: var(--sv-font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 6px 0 4px 0;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.sideview-chat-code-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.sideview-chat-code-actions .sideview-btn {
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.sideview-chat-input-wrap {
+  display: flex;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--sv-border-light);
+  margin-top: auto;
+}
+
+.sideview-chat-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--sv-border);
+  border-radius: var(--sv-radius-sm);
+  font-size: 12px;
+  font-family: var(--sv-font);
+  background: var(--sv-surface);
+  color: var(--sv-text);
+  outline: none;
+}
+
+.sideview-chat-input:focus {
+  border-color: var(--sv-primary);
+}
+
+.sideview-chat-send {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: var(--sv-radius-sm);
+}

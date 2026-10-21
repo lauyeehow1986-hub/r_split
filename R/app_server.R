@@ -82,8 +82,7 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
             pieces[i] <- sv_code_join(NULL, j_to, j_col1, j_col2, join_type = j_type, pipe = TRUE)
           }
         }
-        paste(pieces, collapse = " %>%
-  ")
+        paste(pieces, collapse = " %>%\n  ")
       }, error = function(e) {
         sprintf("# Error generating join code: %s", conditionMessage(e))
       })
@@ -313,6 +312,78 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
     })
 
     dispatch_message("sideview_code_update", list(code = ai_code))
+  }, ignoreInit = FALSE)
+
+  # 4b. Send Copilot Chat -> Conversational Multi-Turn LLM Generation
+  shiny::observeEvent(input$send_copilot_chat, {
+    evt <- input$send_copilot_chat
+    if (is.null(evt)) return()
+
+    user_msg <- if (is.list(evt)) {
+      evt$message %||% evt$prompt %||% evt$text %||% ""
+    } else {
+      as.character(evt)
+    }
+
+    if (!nzchar(trimws(user_msg))) return()
+
+    if (is.null(session$userData$copilot_history)) {
+      session$userData$copilot_history <- list()
+    }
+    history <- session$userData$copilot_history
+
+    current_code <- if (is.list(evt)) evt$current_code %||% evt$code %||% NULL else NULL
+    if (is.null(current_code) || !nzchar(trimws(current_code))) {
+      current_code <- NULL
+    }
+
+    schema <- sv_build_schema_context(normalized_cards)
+    prompt_obj <- sv_build_chat_prompt(
+      user_message = user_msg,
+      history = history,
+      current_code = current_code,
+      schema_context = schema
+    )
+
+    backend <- if (is.list(evt) && !is.null(evt$backend)) evt$backend else getOption("sideview.llm_backend", Sys.getenv("SIDEVIEW_LLM_BACKEND", "ollama"))
+    model <- if (is.list(evt) && !is.null(evt$model)) evt$model else getOption("sideview.llm_model", NULL)
+    endpoint <- if (is.list(evt) && !is.null(evt$endpoint)) evt$endpoint else getOption("sideview.llm_endpoint", NULL)
+    api_key <- if (is.list(evt) && !is.null(evt$api_key)) evt$api_key else getOption("sideview.llm_api_key", NULL)
+
+    reply_text <- tryCatch({
+      llm_fn(
+        prompt = prompt_obj,
+        backend = backend,
+        model = model,
+        endpoint = endpoint,
+        api_key = api_key
+      )
+    }, error = function(e) {
+      paste0("# Copilot request failed: ", conditionMessage(e))
+    })
+
+    extracted_code <- sv_extract_code(reply_text)
+
+    # Append turns to session history
+    session$userData$copilot_history[[length(session$userData$copilot_history) + 1L]] <- list(
+      role = "user",
+      content = user_msg
+    )
+    session$userData$copilot_history[[length(session$userData$copilot_history) + 1L]] <- list(
+      role = "assistant",
+      content = reply_text
+    )
+
+    # Dispatch custom messages
+    dispatch_message("sideview_copilot_reply", list(
+      text = reply_text,
+      code = extracted_code,
+      user_message = user_msg
+    ))
+
+    if (!is.null(extracted_code) && nzchar(trimws(extracted_code))) {
+      dispatch_message("sideview_code_update", list(code = extracted_code))
+    }
   }, ignoreInit = FALSE)
 
   # 5. Inject Script -> rstudioapi insertion

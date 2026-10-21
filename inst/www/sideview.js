@@ -579,10 +579,24 @@ function sendToShiny(name, value) {
         '  <button class="sideview-drawer-tab" data-tab="mutate">Mutate</button>',
         '  <button class="sideview-drawer-tab" data-tab="recode">Recode</button>',
         '  <button class="sideview-drawer-tab" data-tab="discrepancy">Discrepancy</button>',
+        '  <button class="sideview-drawer-tab" data-tab="chat">Copilot</button>',
         '</div>',
         '<div class="sideview-drawer-content">',
-        '  <p class="sideview-drawer-desc">Connect columns to generate join or mutation pipelines.</p>',
-        '  <pre class="sideview-code-block"><code class="sideview-code-text"># Connect two columns to generate pipeline code</code></pre>',
+        '  <div class="sideview-tab-pane sideview-pipeline-pane" data-pane="pipeline">',
+        '    <p class="sideview-drawer-desc">Connect columns to generate join or mutation pipelines.</p>',
+        '    <pre class="sideview-code-block"><code class="sideview-code-text"># Connect two columns to generate pipeline code</code></pre>',
+        '  </div>',
+        '  <div class="sideview-tab-pane sideview-chat-pane" data-pane="chat" style="display: none;">',
+        '    <div class="sideview-chat-messages">',
+        '      <div class="sideview-chat-bubble sideview-chat-assistant">',
+        '        <div class="sideview-chat-bubble-text">Hello! I am your AI Copilot. Ask me questions about your tables, request transformations, or refine existing pipelines.</div>',
+        '      </div>',
+        '    </div>',
+        '    <div class="sideview-chat-input-wrap">',
+        '      <input type="text" id="sideview-chat-input" class="sideview-chat-input" placeholder="Ask Copilot... (e.g. filter rows where age > 30)" />',
+        '      <button id="sideview-chat-send" class="sideview-btn sideview-btn-primary sideview-chat-send">Send</button>',
+        '    </div>',
+        '  </div>',
         '</div>',
         '<div class="sideview-drawer-actions">',
         '  <button class="sideview-btn sideview-btn-primary" data-action="inject-script" title="Insert code into active RStudio script">Insert Script</button>',
@@ -777,6 +791,16 @@ function sendToShiny(name, value) {
       tab.classList.add('active');
 
       var tabName = tab.dataset.tab;
+      var pipelinePane = self.container.querySelector('.sideview-pipeline-pane');
+      var chatPane = self.container.querySelector('.sideview-chat-pane');
+      if (tabName === 'chat' || tabName === 'copilot') {
+        if (pipelinePane) pipelinePane.style.display = 'none';
+        if (chatPane) chatPane.style.display = 'flex';
+      } else {
+        if (pipelinePane) pipelinePane.style.display = '';
+        if (chatPane) chatPane.style.display = 'none';
+      }
+
       if (tabName === 'discrepancy' && self.connections.length > 0) {
         var lastConn = self.connections[self.connections.length - 1];
         sendToShiny('discrepancy_check', {
@@ -785,6 +809,65 @@ function sendToShiny(name, value) {
           table2: lastConn.toTable,
           col2: lastConn.toCol
         });
+      }
+    });
+
+    // Copilot Chat Submit Handling
+    function submitCopilotChat() {
+      var chatInput = self.container.querySelector('#sideview-chat-input');
+      var chatMessages = self.container.querySelector('.sideview-chat-messages');
+      if (!chatInput) return;
+      var msg = chatInput.value.trim();
+      if (!msg) return;
+
+      if (chatMessages) {
+        var userBubble = document.createElement('div');
+        userBubble.className = 'sideview-chat-bubble sideview-chat-user';
+        var userText = document.createElement('div');
+        userText.className = 'sideview-chat-bubble-text';
+        userText.textContent = msg;
+        userBubble.appendChild(userText);
+        chatMessages.appendChild(userBubble);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      chatInput.value = '';
+
+      sendToShiny('send_copilot_chat', {
+        message: msg,
+        current_code: self.generatedCode || ''
+      });
+    }
+
+    this.container.addEventListener('click', function (e) {
+      if (e.target.closest('#sideview-chat-send') || e.target.closest('.sideview-chat-send')) {
+        submitCopilotChat();
+      }
+
+      var repBtn = e.target.closest('[data-action="chat-replace-pipeline"], .sideview-chat-replace-btn');
+      if (repBtn) {
+        var bubble = repBtn.closest('.sideview-chat-bubble');
+        var codeBlock = bubble ? bubble.querySelector('.sideview-chat-code') : null;
+        if (codeBlock && codeBlock.textContent) {
+          self.updateDrawerCode(codeBlock.textContent.trim());
+          self.showToast('Pipeline code replaced!', 'success');
+        }
+      }
+
+      var insBtn = e.target.closest('[data-action="chat-insert-editor"], .sideview-chat-insert-btn');
+      if (insBtn) {
+        var bubble = insBtn.closest('.sideview-chat-bubble');
+        var codeBlock = bubble ? bubble.querySelector('.sideview-chat-code') : null;
+        if (codeBlock && codeBlock.textContent) {
+          sendToShiny('inject_script', { code: codeBlock.textContent.trim() });
+        }
+      }
+    });
+
+    this.container.addEventListener('keydown', function (e) {
+      if (e.target && e.target.id === 'sideview-chat-input' && e.key === 'Enter') {
+        e.preventDefault();
+        submitCopilotChat();
       }
     });
 
@@ -1689,6 +1772,15 @@ function sendToShiny(name, value) {
         t.classList.remove('active');
       }
     });
+    var pipelinePane = this.container.querySelector('.sideview-pipeline-pane');
+    var chatPane = this.container.querySelector('.sideview-chat-pane');
+    if (tabName === 'chat' || tabName === 'copilot') {
+      if (pipelinePane) pipelinePane.style.display = 'none';
+      if (chatPane) chatPane.style.display = 'flex';
+    } else {
+      if (pipelinePane) pipelinePane.style.display = '';
+      if (chatPane) chatPane.style.display = 'none';
+    }
   };
 
   /**
@@ -2014,6 +2106,58 @@ function sendToShiny(name, value) {
       if (data && data.code) {
         self.updateDrawerCode(data.code);
       }
+    });
+
+    global.Shiny.addCustomMessageHandler('sideview_copilot_reply', function (data) {
+      if (!data) return;
+      var chatMessages = self.container.querySelector('.sideview-chat-messages');
+      if (!chatMessages) return;
+
+      var assistantBubble = document.createElement('div');
+      assistantBubble.className = 'sideview-chat-bubble sideview-chat-assistant';
+
+      if (data.text) {
+        var textWithoutFences = data.text.replace(/\`\`\`[a-zA-Z]*[\s\S]*?\`\`\`/g, '').trim();
+        var displayText = textWithoutFences || (data.code ? 'Here is the requested tidyverse transformation:' : data.text);
+        var textEl = document.createElement('div');
+        textEl.className = 'sideview-chat-bubble-text';
+        textEl.textContent = displayText;
+        assistantBubble.appendChild(textEl);
+      }
+
+      if (data.code && data.code.trim()) {
+        var codeEl = document.createElement('pre');
+        codeEl.className = 'sideview-chat-code';
+        codeEl.textContent = data.code.trim();
+        assistantBubble.appendChild(codeEl);
+
+        var actionsEl = document.createElement('div');
+        actionsEl.className = 'sideview-chat-code-actions';
+
+        var replaceBtn = document.createElement('button');
+        replaceBtn.className = 'sideview-btn sideview-btn-sm sideview-chat-replace-btn';
+        replaceBtn.dataset.action = 'chat-replace-pipeline';
+        replaceBtn.textContent = 'Replace Pipeline';
+        replaceBtn.addEventListener('click', function () {
+          self.updateDrawerCode(data.code);
+          self.showToast('Pipeline code replaced!', 'success');
+        });
+
+        var insertBtn = document.createElement('button');
+        insertBtn.className = 'sideview-btn sideview-btn-sm sideview-btn-primary sideview-chat-insert-btn';
+        insertBtn.dataset.action = 'chat-insert-editor';
+        insertBtn.textContent = 'Insert into Editor';
+        insertBtn.addEventListener('click', function () {
+          sendToShiny('inject_script', { code: data.code });
+        });
+
+        actionsEl.appendChild(replaceBtn);
+        actionsEl.appendChild(insertBtn);
+        assistantBubble.appendChild(actionsEl);
+      }
+
+      chatMessages.appendChild(assistantBubble);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 
     // Suggested mappings from server

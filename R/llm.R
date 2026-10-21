@@ -177,6 +177,107 @@ sv_build_prompt <- function(user_prompt, schema_context = NULL) {
   )
 }
 
+#' Build Structured Multi-Turn Prompt for Conversational Copilot
+#'
+#' Formats a multi-turn conversational prompt for the Sideview AI Copilot drawer.
+#' Preserves database/table schema context, active pipeline R code, and previous
+#' dialogue turns (user/assistant). Instructs the model to output updated executable
+#' tidyverse R code within code fences.
+#'
+#' @param user_message Natural language query or instruction from the user.
+#' @param history A list of previous conversation turns, where each turn is a list
+#'   containing `role` ("user" or "assistant") and `content` (or `text`/`message`).
+#' @param current_code Optional character string containing the currently active
+#'   pipeline code in the drawer.
+#' @param schema_context Optional privacy-safe schema string built via `sv_build_schema_context`.
+#'
+#' @return A list of class `c("sideview_chat_prompt", "sideview_prompt", "list")`
+#'   containing `system_message`, `user_message`, `history`, `messages`, and `prompt`.
+#' @export
+sv_build_chat_prompt <- function(user_message,
+                                 history = list(),
+                                 current_code = NULL,
+                                 schema_context = NULL) {
+  if (is.null(user_message)) user_message <- ""
+  user_message <- as.character(user_message)
+
+  system_message <- paste(
+    "You are Sideview Copilot, an expert R and tidyverse data transformation assistant.",
+    "Your task is to assist the user in exploring, transforming, joining, and analyzing data using modern tidyverse packages (e.g. dplyr, tidyr, purrr, ggplot2).",
+    "Follow these strict rules:",
+    "1. Whenever suggesting or modifying data transformations, return clean, robust, and executable R code enclosed in a ```r ... ``` code block.",
+    "2. Use modern native pipe |> or dplyr pipe %>% consistently.",
+    "3. Refer only to the tables and column names provided in the schema context.",
+    "4. When modifying existing pipeline code, preserve the existing logic and emit the complete updated pipeline code block.",
+    "5. Keep conversational explanations concise and focused on the requested R transformation.",
+    sep = "\n"
+  )
+
+  # Context segments
+  ctx_parts <- character(0)
+  if (!is.null(schema_context) && nzchar(trimws(schema_context))) {
+    ctx_parts <- c(ctx_parts, paste0("Available table schemas:\n", trimws(schema_context)))
+  }
+  if (!is.null(current_code) && nzchar(trimws(current_code))) {
+    ctx_parts <- c(ctx_parts, paste0("Current active pipeline code:\n```r\n", trimws(current_code), "\n```"))
+  }
+
+  # Build user turn message
+  user_turn_parts <- character(0)
+  if (length(ctx_parts) > 0L) {
+    user_turn_parts <- c(user_turn_parts, paste(ctx_parts, collapse = "\n\n"), "")
+  }
+  user_turn_parts <- c(user_turn_parts, paste("User request:", user_message))
+  curr_user_msg <- paste(user_turn_parts, collapse = "\n")
+
+  # Normalize history into standardized role/content list
+  norm_history <- list()
+  if (is.list(history) && length(history) > 0L) {
+    for (turn in history) {
+      if (is.list(turn)) {
+        r <- turn$role %||% "user"
+        cnt <- turn$content %||% turn$message %||% turn$text %||% ""
+        norm_history[[length(norm_history) + 1L]] <- list(role = as.character(r), content = as.character(cnt))
+      }
+    }
+  }
+
+  # Build messages list for chat completions API
+  messages <- list()
+  messages[[1L]] <- list(role = "system", content = system_message)
+  for (turn in norm_history) {
+    messages[[length(messages) + 1L]] <- turn
+  }
+  messages[[length(messages) + 1L]] <- list(role = "user", content = curr_user_msg)
+
+  # Build full prompt string representation
+  history_str_parts <- character(0)
+  for (turn in norm_history) {
+    prefix <- if (identical(turn$role, "assistant")) "Assistant: " else "User: "
+    history_str_parts <- c(history_str_parts, paste0(prefix, turn$content))
+  }
+
+  full_parts <- c(system_message)
+  if (length(history_str_parts) > 0L) {
+    full_parts <- c(full_parts, "\n--- Conversation History ---", paste(history_str_parts, collapse = "\n\n"), "--- End History ---\n")
+  }
+  full_parts <- c(full_parts, curr_user_msg)
+  full_prompt <- paste(full_parts, collapse = "\n\n")
+
+  structure(
+    list(
+      system_message = system_message,
+      user_message = curr_user_msg,
+      system = system_message,
+      user = curr_user_msg,
+      history = norm_history,
+      messages = messages,
+      prompt = full_prompt
+    ),
+    class = c("sideview_chat_prompt", "sideview_prompt", "list")
+  )
+}
+
 #' Extract Executable R Code from LLM Response Text
 #'
 #' Parses code fence blocks (` ```r ... ``` `, ` ```R ... ``` `, ` ``` ... ``` `)
@@ -291,12 +392,17 @@ sv_call_llm <- function(prompt,
   }
 
   # Build messages array
-  messages <- list()
-  if (nzchar(sys_msg)) {
-    messages <- c(messages, list(list(role = "system", content = sys_msg)))
-  }
-  if (nzchar(usr_msg)) {
-    messages <- c(messages, list(list(role = "user", content = usr_msg)))
+  messages <- if (is.list(prompt) && !is.null(prompt$messages) && length(prompt$messages) > 0L) {
+    prompt$messages
+  } else {
+    msgs <- list()
+    if (nzchar(sys_msg)) {
+      msgs <- c(msgs, list(list(role = "system", content = sys_msg)))
+    }
+    if (nzchar(usr_msg)) {
+      msgs <- c(msgs, list(list(role = "user", content = usr_msg)))
+    }
+    msgs
   }
 
   payload <- list(

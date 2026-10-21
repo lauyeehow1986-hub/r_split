@@ -401,12 +401,43 @@ sideview_ui <- function(cards = list(), title = "Sideview Canvas") {
       htmltools::tags$button(class = "sideview-drawer-tab", `data-tab` = "arrange", "Arrange"),
       htmltools::tags$button(class = "sideview-drawer-tab", `data-tab` = "mutate", "Mutate"),
       htmltools::tags$button(class = "sideview-drawer-tab", `data-tab` = "recode", "Recode"),
-      htmltools::tags$button(class = "sideview-drawer-tab", `data-tab` = "discrepancy", "Discrepancy")
+      htmltools::tags$button(class = "sideview-drawer-tab", `data-tab` = "discrepancy", "Discrepancy"),
+      htmltools::tags$button(class = "sideview-drawer-tab", `data-tab` = "chat", "Copilot")
     ),
     htmltools::tags$div(
       class = "sideview-drawer-content",
-      htmltools::tags$p(class = "sideview-drawer-desc", "Connect columns to generate join or mutation pipelines."),
-      htmltools::tags$pre(class = "sideview-code-block", htmltools::tags$code(class = "sideview-code-text", "# Connect two columns to generate pipeline code"))
+      htmltools::tags$div(
+        class = "sideview-tab-pane sideview-pipeline-pane",
+        `data-pane` = "pipeline",
+        htmltools::tags$p(class = "sideview-drawer-desc", "Connect columns to generate join or mutation pipelines."),
+        htmltools::tags$pre(class = "sideview-code-block", htmltools::tags$code(class = "sideview-code-text", "# Connect two columns to generate pipeline code"))
+      ),
+      htmltools::tags$div(
+        class = "sideview-tab-pane sideview-chat-pane",
+        `data-pane` = "chat",
+        style = "display: none;",
+        htmltools::tags$div(
+          class = "sideview-chat-messages",
+          htmltools::tags$div(
+            class = "sideview-chat-bubble sideview-chat-assistant",
+            htmltools::tags$div(class = "sideview-chat-bubble-text", "Hello! I am your AI Copilot. Ask me questions about your tables, request tidyverse code, or refine an existing pipeline.")
+          )
+        ),
+        htmltools::tags$div(
+          class = "sideview-chat-input-wrap",
+          htmltools::tags$input(
+            type = "text",
+            id = "sideview-chat-input",
+            class = "sideview-chat-input",
+            placeholder = "Ask Copilot... (e.g. filter rows where age > 30)"
+          ),
+          htmltools::tags$button(
+            id = "sideview-chat-send",
+            class = "sideview-btn sideview-btn-primary sideview-chat-send",
+            "Send"
+          )
+        )
+      )
     ),
     htmltools::tags$div(
       class = "sideview-drawer-actions",

@@ -536,3 +536,83 @@ test_that("sideview_server handles request_suggested_mappings and apply_auto_cle
     expect_true(grepl('"male"\\s*~\\s*"Male"', last_code))
   })
 })
+
+
+test_that("sideview_ui includes Action Drawer Copilot Chat tab and messages UI", {
+  df <- data.frame(id = 1:3, name = c("A", "B", "C"))
+  ui <- sideview_ui(df)
+  html_rendered <- as.character(ui)
+
+  expect_match(html_rendered, "sideview-chat-messages")
+  expect_match(html_rendered, "sideview-chat-input")
+  expect_match(html_rendered, "sideview-chat-send")
+  expect_match(html_rendered, "sideview-drawer-tab")
+  expect_match(html_rendered, 'data-tab="chat"')
+})
+
+test_that("sideview_server handles send_copilot_chat multi-turn conversational events", {
+  df1 <- data.frame(patient_id = 1:3, age = c(25, 30, 35))
+  df2 <- data.frame(patient_id = 1:3, test_val = c(100, 200, 150))
+  cards <- list(sv_normalize(df1, name = "patients"), sv_normalize(df2, name = "labs"))
+
+  captured_prompts <- list()
+  fake_copilot_llm <- function(prompt, backend = "ollama", ...) {
+    captured_prompts[[length(captured_prompts) + 1L]] <<- prompt
+    if (length(captured_prompts) == 1L) {
+      "Here is the join:\n```r\npatients %>% dplyr::left_join(labs, by = 'patient_id')\n```"
+    } else {
+      "Here is the filtered pipeline:\n```r\npatients %>% dplyr::left_join(labs, by = 'patient_id') %>% dplyr::filter(test_val > 120)\n```"
+    }
+  }
+
+  shiny::testServer(sideview_server(cards, llm_fn = fake_copilot_llm), {
+    # Turn 1: user initiates chat
+    session$setInputs(send_copilot_chat = list(
+      message = "Join patients and labs on patient_id",
+      current_code = ""
+    ))
+
+    # Check copilot history was initialized and appended
+    history1 <- session$userData$copilot_history
+    expect_type(history1, "list")
+    expect_equal(length(history1), 2L)
+    expect_equal(history1[[1]]$role, "user")
+    expect_equal(history1[[1]]$content, "Join patients and labs on patient_id")
+    expect_equal(history1[[2]]$role, "assistant")
+    expect_true(grepl("left_join", history1[[2]]$content))
+
+    # Verify custom messages dispatched
+    msgs <- session$userData$custom_messages
+    reply_msgs <- Filter(function(m) m$type == "sideview_copilot_reply", msgs)
+    expect_equal(length(reply_msgs), 1L)
+    expect_true(grepl("left_join", reply_msgs[[1]]$message$code))
+
+    code_msgs <- Filter(function(m) m$type == "sideview_code_update", msgs)
+    expect_gte(length(code_msgs), 1L)
+    expect_true(grepl("left_join", code_msgs[[length(code_msgs)]]$message$code))
+
+    # Turn 2: multi-turn follow up instruction
+    session$setInputs(send_copilot_chat = list(
+      message = "Now filter for test_val > 120",
+      current_code = "patients %>% dplyr::left_join(labs, by = 'patient_id')"
+    ))
+
+    history2 <- session$userData$copilot_history
+    expect_equal(length(history2), 4L)
+    expect_equal(history2[[3]]$role, "user")
+    expect_equal(history2[[3]]$content, "Now filter for test_val > 120")
+    expect_equal(history2[[4]]$role, "assistant")
+    expect_true(grepl("filter\\(test_val > 120\\)", history2[[4]]$content))
+
+    # Verify captured prompt in turn 2 contained previous history and active code
+    expect_equal(length(captured_prompts), 2L)
+    p2 <- captured_prompts[[2]]
+    expect_true(grepl("left_join", p2$user_message) || grepl("left_join", p2$prompt))
+    expect_true(grepl("Current active pipeline code", p2$user_message) || grepl("Current active pipeline code", p2$prompt))
+
+    msgs2 <- session$userData$custom_messages
+    reply_msgs2 <- Filter(function(m) m$type == "sideview_copilot_reply", msgs2)
+    expect_equal(length(reply_msgs2), 2L)
+    expect_true(grepl("filter\\(test_val > 120\\)", reply_msgs2[[2]]$message$code))
+  })
+})

@@ -321,3 +321,119 @@ test_that("sv_call_llm and sv_extract_code handle trailing slashes and knitr opt
   schema <- sv_build_schema_context(tbl)
   expect_true(grepl("Table", schema))
 })
+
+
+test_that("sv_build_chat_prompt constructs multi-turn prompt with history, schema, and active code", {
+  history <- list(
+    list(role = "user", content = "Join sales and customers on customer_id"),
+    list(role = "assistant", content = "Here is the code:\n```r\nsales |> left_join(customers, by = 'customer_id')\n```")
+  )
+  current_code <- "sales |> left_join(customers, by = 'customer_id')"
+  schema_context <- "Table: sales (customer_id, amount)\nTable: customers (customer_id, name, region)"
+
+  chat_prompt <- sv_build_chat_prompt(
+    user_message = "Now filter for region == 'North' and summarize total amount",
+    history = history,
+    current_code = current_code,
+    schema_context = schema_context
+  )
+
+  expect_s3_class(chat_prompt, "sideview_prompt")
+  expect_s3_class(chat_prompt, "sideview_chat_prompt")
+  expect_type(chat_prompt, "list")
+
+  # 1. Preserves schema context
+  expect_true(grepl("Table: sales", chat_prompt$user_message))
+  expect_true(grepl("Table: customers", chat_prompt$user_message))
+  expect_true(grepl("region", chat_prompt$user_message))
+
+  # 2. Includes active pipeline code in prompt context
+  expect_true(grepl("sales \\|> left_join\\(customers", chat_prompt$user_message))
+  expect_true(grepl("Current active pipeline code", chat_prompt$user_message, ignore.case = TRUE))
+
+  # 3. Includes previous turns in context
+  expect_equal(length(chat_prompt$history), 2L)
+  expect_equal(chat_prompt$history[[1]]$role, "user")
+  expect_equal(chat_prompt$history[[1]]$content, "Join sales and customers on customer_id")
+  expect_equal(chat_prompt$history[[2]]$role, "assistant")
+  expect_true(grepl("left_join", chat_prompt$history[[2]]$content))
+
+  # 4. Synthesizes clean structured system and user prompts
+  expect_true(grepl("tidyverse|dplyr", chat_prompt$system_message, ignore.case = TRUE))
+  expect_true(grepl("```r", chat_prompt$system_message))
+  expect_true(grepl("filter for region == 'North'", chat_prompt$user_message))
+
+  # 5. Full prompt string and messages array for LLM calls
+  expect_true(length(chat_prompt$messages) >= 4L) # system + 2 history + 1 current user
+  expect_equal(chat_prompt$messages[[1]]$role, "system")
+  expect_equal(chat_prompt$messages[[2]]$role, "user")
+  expect_equal(chat_prompt$messages[[3]]$role, "assistant")
+  expect_equal(chat_prompt$messages[[4]]$role, "user")
+  expect_true(grepl("region == 'North'", chat_prompt$messages[[4]]$content))
+
+  # 6. Extracts executable R code from multi-turn responses
+  assistant_reply <- paste(
+    "Sure! Here is the updated pipeline filtering for region and summarizing total amount:",
+    "```r",
+    "sales |>",
+    "  left_join(customers, by = 'customer_id') |>",
+    "  filter(region == 'North') |>",
+    "  summarise(total_amount = sum(amount, na.rm = TRUE))",
+    "```",
+    "Let me know if you need to group by customer as well!",
+    sep = "\n"
+  )
+  extracted <- sv_extract_code(assistant_reply)
+  expect_true(grepl("filter\\(region == 'North'\\)", extracted))
+  expect_true(grepl("summarise\\(total_amount", extracted))
+  expect_false(grepl("Sure!", extracted))
+})
+
+test_that("sv_build_chat_prompt handles empty history, NULL code, and NULL schema", {
+  prompt_simple <- sv_build_chat_prompt("Calculate average score")
+
+  expect_s3_class(prompt_simple, "sideview_prompt")
+  expect_equal(length(prompt_simple$history), 0L)
+  expect_true(grepl("Calculate average score", prompt_simple$user_message))
+  expect_true(length(prompt_simple$messages) == 2L) # system + user
+})
+
+test_that("sv_call_llm supports multi-turn chat prompt with mock", {
+  captured_req <- NULL
+  mock_chat_backend <- function(req) {
+    captured_req <<- req
+    resp_payload <- list(
+      choices = list(
+        list(
+          message = list(
+            role = "assistant",
+            content = "```r\ndf |> filter(x > 10)\n```"
+          )
+        )
+      )
+    )
+    httr2::response(
+      status_code = 200L,
+      headers = list("content-type" = "application/json"),
+      body = charToRaw(jsonlite::toJSON(resp_payload, auto_unbox = TRUE))
+    )
+  }
+
+  chat_p <- sv_build_chat_prompt(
+    user_message = "filter x > 10",
+    history = list(list(role = "user", content = "load data")),
+    current_code = "df <- read_csv('data.csv')"
+  )
+
+  httr2::with_mocked_responses(mock_chat_backend, {
+    res <- sv_call_llm(
+      prompt = chat_p,
+      backend = "openai",
+      extract_code = TRUE
+    )
+    expect_equal(res, "df |> filter(x > 10)")
+    # Verify multi-turn messages were passed to API
+    sent_msgs <- captured_req$body$data$messages
+    expect_true(length(sent_msgs) >= 3L)
+  })
+})
