@@ -7,7 +7,7 @@
 sv_code_join(df1, df2, col1, col2 = col1, join_type = "left", pipe = FALSE)
 }
 \arguments{
-\item{df1}{Name of the first data frame.}
+\item{df1}{Name of the first data frame (optional / can be NULL when constructing intermediate piped join segments).}
 
 \item{df2}{Name of the second data frame.}
 

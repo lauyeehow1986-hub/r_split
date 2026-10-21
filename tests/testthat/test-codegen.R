@@ -464,4 +464,10 @@ test_that("sv_code_pivot_wider generates valid tidyr code with options", {
   expect_error(sv_code_pivot_wider("df", names_from = "key", values_from = character(0)), "must not be empty")
   expect_error(sv_code_pivot_wider("df", names_from = c("key", ""), values_from = "val"), "must not contain NA or empty")
   expect_error(sv_code_pivot_wider("df", names_from = "key", values_from = c("val", NA)), "must not contain NA or empty")
+
+  # Error handling: invalid values_fn
+  expect_error(sv_code_pivot_wider("df", names_from = "key", values_from = "val", values_fn = c("mean", "sum")),
+               "`values_fn` with multiple functions must be a named vector or list.")
+  expect_error(sv_code_pivot_wider("df", names_from = "key", values_from = "val", values_fn = c(a = "mean", "sum")),
+               "All elements in `values_fn` must be named.")
 })

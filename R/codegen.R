@@ -450,7 +450,7 @@ sv_code_recode <- function(df_name, col, crosswalk, default = NULL,
 #' @param cols Character vector of column name(s) to pivot into longer format.
 #' @param names_to Character string specifying the name of the column to create from the data stored in the column names of \code{cols}. Defaults to \code{"name"}.
 #' @param values_to Character string specifying the name of the column to create from the data stored in cell values. Defaults to \code{"value"}.
-#' @param pipe Logical; if TRUE, uses pipe syntax \code{df %>% tidyr::pivot_longer(...)}. Defaults to \code{FALSE}.
+#' @param pipe Logical; if TRUE, uses pipe syntax `df %>% tidyr::pivot_longer(...)`. Defaults to `FALSE`.
 #' @return A character string of R code.
 #' @export
 sv_code_pivot_longer <- function(df_name = NULL, cols, names_to = "name", values_to = "value", pipe = FALSE) {
@@ -518,7 +518,7 @@ sv_code_pivot_longer <- function(df_name = NULL, cols, names_to = "name", values
 #' @param names_from Character vector of column name(s) to get the name of the output column from.
 #' @param values_from Character vector of column name(s) to get the cell values from.
 #' @param values_fn Optional function name (character string or named vector/list) to apply to values. Defaults to \code{NULL}.
-#' @param pipe Logical; if TRUE, uses pipe syntax \code{df %>% tidyr::pivot_wider(...)}. Defaults to \code{FALSE}.
+#' @param pipe Logical; if TRUE, uses pipe syntax `df %>% tidyr::pivot_wider(...)`. Defaults to `FALSE`.
 #' @return A character string of R code.
 #' @export
 sv_code_pivot_wider <- function(df_name = NULL, names_from, values_from, values_fn = NULL, pipe = FALSE) {
@@ -536,6 +536,14 @@ sv_code_pivot_wider <- function(df_name = NULL, names_from, values_from, values_
   }
   if (!is.null(df_name) && length(df_name) > 1) {
     stop("`df_name` must be a single character string or NULL.")
+  }
+  if (!is.null(values_fn)) {
+    if (is.character(values_fn) && length(values_fn) > 1 && is.null(names(values_fn))) {
+      stop("`values_fn` with multiple functions must be a named vector or list.")
+    }
+    if (!is.null(names(values_fn)) && any(!nzchar(names(values_fn)))) {
+      stop("All elements in `values_fn` must be named.")
+    }
   }
 
   esc_names <- sv_escape_ident(names_from)
