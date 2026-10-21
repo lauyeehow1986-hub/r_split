@@ -55,7 +55,7 @@ sv_code_rename <- function(df_name, old_col, new_col, pipe = FALSE) {
 
 #' Generate tidyverse Code for Relational Table Joins
 #'
-#' @param df1 Name of the first data frame.
+#' @param df1 Name of the first data frame (optional / can be NULL when constructing intermediate piped join segments).
 #' @param df2 Name of the second data frame.
 #' @param col1 Key column name(s) in df1.
 #' @param col2 Key column name(s) in df2 (defaults to col1).
@@ -64,6 +64,10 @@ sv_code_rename <- function(df_name, old_col, new_col, pipe = FALSE) {
 #' @return A character string of R code.
 #' @export
 sv_code_join <- function(df1, df2, col1, col2 = col1, join_type = "left", pipe = FALSE) {
+  if (missing(df2) || is.null(df2) || length(df2) != 1 || is.na(df2) || !nzchar(df2)) {
+    stop("Join table `df2` must be a single non-empty character string.")
+  }
+
   jt <- tolower(join_type)
   jt <- sub("_join$", "", jt)
   valid_joins <- c("left", "inner", "anti", "right", "full", "semi")
@@ -106,7 +110,7 @@ sv_code_join <- function(df1, df2, col1, col2 = col1, join_type = "left", pipe =
     by_str <- sprintf('by = c(%s)', paste(pairs, collapse = ", "))
   }
 
-  has_df1 <- !is.null(df1) && length(df1) > 0 && nzchar(df1)
+  has_df1 <- !is.null(df1) && length(df1) == 1 && !is.na(df1) && nzchar(df1)
   esc_df1 <- if (has_df1) sv_escape_ident(df1) else NULL
   esc_df2 <- sv_escape_ident(df2)
 

@@ -102,6 +102,43 @@ test_that("sv_code_join supports composite multi-key joins", {
   expect_silent(parse(text = code_backtick))
 })
 
+test_that("sv_code_join generates intermediate piped join segments when df1 is NULL", {
+  code_pipe_null <- sv_code_join(NULL, "df2", "id", pipe = TRUE)
+  expect_equal(code_pipe_null, 'dplyr::left_join(df2, by = "id")')
+
+  code_nonpipe_null <- sv_code_join(NULL, "df2", "id", pipe = FALSE)
+  expect_equal(code_nonpipe_null, 'dplyr::left_join(df2, by = "id")')
+
+  # Multi-key intermediate segment
+  code_multi_null <- sv_code_join(NULL, "df2", c("a", "b"), c("x", "y"), pipe = TRUE)
+  expect_equal(code_multi_null, 'dplyr::left_join(df2, by = c("a" = "x", "b" = "y"))')
+})
+
+test_that("sv_code_join validates arguments and throws appropriate errors", {
+  # Mismatched key lengths
+  expect_error(
+    sv_code_join("df1", "df2", col1 = c("a", "b"), col2 = "x"),
+    "`col1` and `col2` must have the same length."
+  )
+
+  # Empty keys
+  expect_error(
+    sv_code_join("df1", "df2", col1 = character(0)),
+    "Join columns \\(`col1` and `col2`\\) must not be empty."
+  )
+  expect_error(
+    sv_code_join("df1", "df2", col1 = "a", col2 = character(0)),
+    "Join columns \\(`col1` and `col2`\\) must not be empty."
+  )
+
+  # Invalid df2 (missing, NULL, NA, empty string, vector > 1)
+  expect_error(sv_code_join("df1"), "Join table `df2` must be a single non-empty character string.")
+  expect_error(sv_code_join("df1", NULL, "id"), "Join table `df2` must be a single non-empty character string.")
+  expect_error(sv_code_join("df1", "", "id"), "Join table `df2` must be a single non-empty character string.")
+  expect_error(sv_code_join("df1", NA_character_, "id"), "Join table `df2` must be a single non-empty character string.")
+  expect_error(sv_code_join("df1", c("df2", "df3"), "id"), "Join table `df2` must be a single non-empty character string.")
+})
+
 
 test_that("sv_code_mutate generates valid mutate code", {
   # Single mutation

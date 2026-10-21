@@ -72,8 +72,8 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
           j <- joins[[i]]
           j_from <- j$from_table %||% j$table1
           j_to <- j$to_table %||% j$table2
-          j_col1 <- unlist(j$from_cols %||% j$from_col %||% j$col1, use.names = FALSE)
-          j_col2 <- unlist(j$to_cols %||% j$to_col %||% j$col2, use.names = FALSE)
+          j_col1 <- unlist(j$from_cols %||% j$from_col %||% j$col1 %||% j$cols1, use.names = FALSE)
+          j_col2 <- unlist(j$to_cols %||% j$to_col %||% j$col2 %||% j$cols2, use.names = FALSE)
           if (is.null(j_col2)) j_col2 <- j_col1
           j_type <- j$join_type %||% "left_join"
           if (i == 1) {

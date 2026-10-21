@@ -124,6 +124,64 @@ test_that("sideview_server handles column_mapped input event and dispatches code
   })
 })
 
+test_that("sideview_server handles column_mapped with multi-key join (from_cols)", {
+  df1 <- data.frame(site = 1:2, id = 1:2)
+  df2 <- data.frame(site = 1:2, id = 1:2)
+  cards <- list(sv_normalize(df1, name = "t1"), sv_normalize(df2, name = "t2"))
+
+  shiny::testServer(sideview_server(cards), {
+    session$setInputs(column_mapped = list(
+      from_table = "t1",
+      from_cols = c("site", "id"),
+      to_table = "t2",
+      to_cols = c("site", "id"),
+      join_type = "inner_join"
+    ))
+
+    custom_msgs <- session$userData$custom_messages
+    expect_true(length(custom_msgs) >= 1)
+    last_msg <- custom_msgs[[length(custom_msgs)]]
+    expect_equal(last_msg$type, "sideview_code_update")
+    expect_match(last_msg$message$code, 't1\\s*%>%\\s*dplyr::inner_join\\(t2,\\s*by = c\\("site", "id"\\)\\)')
+  })
+})
+
+test_that("sideview_server handles column_mapped with chained pipeline (joins = list(...))", {
+  df1 <- data.frame(id = 1:2, site = 1:2)
+  df2 <- data.frame(id = 1:2, hosp = 1:2)
+  df3 <- data.frame(hosp = 1:2, dept = 1:2)
+  cards <- list(sv_normalize(df1, name = "t1"), sv_normalize(df2, name = "t2"), sv_normalize(df3, name = "t3"))
+
+  shiny::testServer(sideview_server(cards), {
+    session$setInputs(column_mapped = list(
+      joins = list(
+        list(
+          from_table = "t1",
+          to_table = "t2",
+          from_cols = c("id", "site"),
+          to_cols = c("id", "hosp"),
+          join_type = "left"
+        ),
+        list(
+          from_table = "t2",
+          to_table = "t3",
+          from_col = "hosp",
+          to_col = "hosp",
+          join_type = "inner"
+        )
+      )
+    ))
+
+    custom_msgs <- session$userData$custom_messages
+    expect_true(length(custom_msgs) >= 1)
+    last_msg <- custom_msgs[[length(custom_msgs)]]
+    expect_equal(last_msg$type, "sideview_code_update")
+    code <- last_msg$message$code
+    expect_match(code, 't1\\s*%>%\\s*dplyr::left_join\\(t2,\\s*by = c\\("id" = "id", "site" = "hosp"\\)\\)')
+    expect_match(code, '%>%\\s*dplyr::inner_join\\(t3,\\s*by = "hosp"\\)')
+  })
+})
+
 test_that("sideview_server handles column_renamed input event", {
   df1 <- data.frame(old_name = 1:3, stringsAsFactors = FALSE)
   cards <- list(sv_normalize(df1, name = "df1"))
