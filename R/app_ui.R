@@ -33,6 +33,128 @@ sideview_html_dependency <- function() {
   )
 }
 
+#' Generate Column Header Profiling Tags
+#'
+#' Computes sparkline histograms for numeric columns, top category frequency
+#' for categorical/factor columns, and missingness badges.
+#'
+#' @param col_vals A vector of column values.
+#' @return A `shiny.tag` or `NULL` representing the header profiling summary.
+#' @noRd
+render_col_profiling <- function(col_vals) {
+  if (is.null(col_vals)) return(NULL)
+  
+  n_total <- length(col_vals)
+  na_cnt <- sum(is.na(col_vals))
+  
+  # 1. Missingness indicator (.sideview-na-badge)
+  na_badge <- NULL
+  if (na_cnt > 0L && n_total > 0L) {
+    pct <- round(na_cnt / n_total * 100, 1)
+    badge_cls <- if (pct > 50) "sideview-na-badge is-high" else "sideview-na-badge"
+    na_badge <- htmltools::tags$span(
+      class = badge_cls,
+      title = sprintf("%d missing values (%.1f%%)", na_cnt, pct),
+      paste0(pct, "% NA")
+    )
+  }
+  
+  # 2. Distribution indicator
+  profile_indicator <- NULL
+  if (is.numeric(col_vals)) {
+    valid_vals <- col_vals[!is.na(col_vals) & is.finite(col_vals)]
+    n_valid <- length(valid_vals)
+    
+    counts <- integer(5L)
+    if (n_valid > 0L) {
+      min_val <- min(valid_vals)
+      max_val <- max(valid_vals)
+      if (min_val == max_val) {
+        counts[3L] <- n_valid
+      } else {
+        breaks <- seq(min_val, max_val, length.out = 6L)
+        binned <- cut(valid_vals, breaks = breaks, include.lowest = TRUE)
+        tab <- as.vector(table(binned))
+        counts[seq_along(tab)] <- tab
+      }
+    }
+    
+    max_c <- max(counts)
+    rect_tags <- lapply(seq_len(5L), function(i) {
+      cnt <- counts[i]
+      h <- if (max_c > 0L && cnt > 0L) max(1L, round((cnt / max_c) * 12L)) else 0L
+      y <- 13L - h
+      x <- (i - 1L) * 10L
+      htmltools::tag("rect", list(
+        x = x,
+        y = y,
+        width = 8L,
+        height = h,
+        rx = 1L
+      ))
+    })
+    
+    profile_indicator <- htmltools::tag(
+      "svg",
+      list(
+        class = "sideview-sparkline",
+        viewBox = "0 0 50 14",
+        width = "50",
+        height = "14",
+        rect_tags
+      )
+    )
+  } else if (is.character(col_vals) || is.factor(col_vals)) {
+    valid_vals <- col_vals[!is.na(col_vals)]
+    n_valid <- length(valid_vals)
+    
+    if (n_valid > 0L) {
+      tbl <- sort(table(as.character(valid_vals)), decreasing = TRUE)
+      top_val <- names(tbl)[1L]
+      top_cnt <- as.integer(tbl[1L])
+      top_pct <- round(top_cnt / n_valid * 100)
+      n_unique <- length(tbl)
+      
+      display_label <- if (nzchar(top_val)) {
+        if (nchar(top_val) > 7L) paste0(substr(top_val, 1L, 6L), "\u2026") else top_val
+      } else {
+        '""'
+      }
+      
+      title_str <- sprintf("Top: %s (%d%%, %d/%d) | %d distinct", top_val, top_pct, top_cnt, n_valid, n_unique)
+      
+      profile_indicator <- htmltools::tags$span(
+        class = "sideview-cat-profile",
+        title = title_str,
+        htmltools::tags$span(
+          class = "sideview-cat-bar",
+          style = sprintf("width: %d%%;", max(5L, min(100L, as.integer(top_pct))))
+        ),
+        htmltools::tags$span(
+          class = "sideview-cat-label",
+          sprintf("%d%% %s", top_pct, display_label)
+        )
+      )
+    } else {
+      profile_indicator <- htmltools::tags$span(
+        class = "sideview-cat-profile",
+        title = "All values missing",
+        htmltools::tags$span(class = "sideview-cat-bar", style = "width: 0%;")
+      )
+    }
+  }
+  
+  if (is.null(profile_indicator) && is.null(na_badge)) {
+    return(NULL)
+  }
+  
+  htmltools::tags$div(
+    class = "col-header-profile",
+    profile_indicator,
+    na_badge
+  )
+}
+
 #' Render a Single Card to Shiny HTML Tags
 #'
 #' @param card A `sideview_card` object.
@@ -89,6 +211,9 @@ render_card_tag <- function(card, index = 1L) {
     # Table header
     th_tags <- lapply(col_names, function(col) {
       c_type <- col_types[col] %||% ""
+      col_vals <- df[[col]]
+      profile_summary <- render_col_profiling(col_vals)
+      
       htmltools::tags$th(
         `data-col-name` = col,
         htmltools::tags$div(
@@ -105,7 +230,8 @@ render_card_tag <- function(card, index = 1L) {
             htmltools::tags$button(class = "sideview-th-btn sideview-sort-btn", `data-action` = "sort-col", `data-col-name` = col, title = "Sort column (Asc / Desc / Reset)", "⇅"),
             htmltools::tags$button(class = "sideview-th-btn sideview-filter-btn", `data-action` = "filter-col", `data-col-name` = col, title = "Filter column", "🔍"),
             htmltools::tags$span(class = "sideview-col-port", `data-col-name` = col, title = "Connect to map field")
-          )
+          ),
+          profile_summary
         )
       )
     })

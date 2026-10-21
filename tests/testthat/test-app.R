@@ -447,3 +447,63 @@ test_that("sideview_server handles non-syntactic column names in sorting and fil
     expect_match(msgs[[length(msgs)]]$message$code, "dplyr::desc\\(`Patient Age \\(years\\)`\\)")
   })
 })
+
+test_that("render_card_tag generates header sparklines, categorical profiles, and missingness badges", {
+  df <- data.frame(
+    num_col = c(10, 20, 25, 30, 100),
+    num_na = c(1, 2, NA, 4, 5), # 1 NA out of 5 = 20%
+    char_col = c("apple", "banana", "apple", "cherry", "apple"),
+    factor_col = factor(c("low", "med", "low", "high", "low")),
+    clean_num = c(1, 2, 3, 4, 5), # 0% NA
+    stringsAsFactors = FALSE
+  )
+  card <- sv_normalize(df, name = "profiling_test")
+  tag <- render_card_tag(card)
+  html_str <- as.character(tag)
+  
+  # 1. Numeric columns have inline SVG sparkline with 5 rect elements
+  expect_match(html_str, '<svg class="sideview-sparkline"[^>]*viewBox="0 0 50 14"')
+  expect_match(html_str, '<rect[^>]*width="8"')
+  
+  # 2. Categorical distribution indicator for character and factor columns
+  expect_match(html_str, 'class="sideview-cat-profile"')
+  expect_match(html_str, 'class="sideview-cat-bar"')
+  
+  # 3. Missingness indicator when column contains NA
+  expect_match(html_str, 'class="sideview-na-badge"')
+  expect_match(html_str, '20% NA')
+  
+  # 4. Clean column (0% NA) omits missingness badge
+  clean_df <- data.frame(x = 1:5, y = c("a", "b", "c", "d", "e"))
+  clean_card <- sv_normalize(clean_df, name = "clean_test")
+  clean_html <- as.character(render_card_tag(clean_card))
+  expect_false(grepl("sideview-na-badge", clean_html))
+  
+  # 5. Safe handling of 0-row tables
+  zero_row_df <- data.frame(a = numeric(0), b = character(0))
+  zero_card <- sv_normalize(zero_row_df, name = "zero_test")
+  expect_silent({
+    zero_html <- as.character(render_card_tag(zero_card))
+  })
+  expect_match(zero_html, 'sideview-card')
+  
+  # 6. Safe handling of all-NA columns
+  all_na_df <- data.frame(
+    all_na_num = c(NA_real_, NA_real_, NA_real_),
+    all_na_char = c(NA_character_, NA_character_, NA_character_)
+  )
+  all_na_card <- sv_normalize(all_na_df, name = "all_na_test")
+  expect_silent({
+    all_na_html <- as.character(render_card_tag(all_na_card))
+  })
+  expect_match(all_na_html, '<svg class="sideview-sparkline"')
+  expect_match(all_na_html, '100% NA')
+  
+  # 7. Safe handling of zero-variance numeric column (all values identical)
+  zero_var_df <- data.frame(identical_num = c(42, 42, 42, 42))
+  zero_var_card <- sv_normalize(zero_var_df, name = "zero_var_test")
+  expect_silent({
+    zero_var_html <- as.character(render_card_tag(zero_var_card))
+  })
+  expect_match(zero_var_html, '<svg class="sideview-sparkline"')
+})
