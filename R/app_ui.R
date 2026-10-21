@@ -42,7 +42,7 @@ sideview_html_dependency <- function() {
 #' @return A `shiny.tag` or `NULL` representing the header profiling summary.
 #' @noRd
 render_col_profiling <- function(col_vals) {
-  if (is.null(col_vals)) return(NULL)
+  if (is.null(col_vals) || length(col_vals) == 0L) return(NULL)
   
   n_total <- length(col_vals)
   na_cnt <- sum(is.na(col_vals))
@@ -52,10 +52,12 @@ render_col_profiling <- function(col_vals) {
   if (na_cnt > 0L && n_total > 0L) {
     pct <- round(na_cnt / n_total * 100, 1)
     badge_cls <- if (pct > 50) "sideview-na-badge is-high" else "sideview-na-badge"
+    badge_text <- if (pct == 0) "<0.1% NA" else paste0(pct, "% NA")
+    title_pct <- if (pct == 0) "<0.1%" else sprintf("%.1f%%", pct)
     na_badge <- htmltools::tags$span(
       class = badge_cls,
-      title = sprintf("%d missing values (%.1f%%)", na_cnt, pct),
-      paste0(pct, "% NA")
+      title = sprintf("%d missing values (%s)", na_cnt, title_pct),
+      badge_text
     )
   }
   
@@ -66,9 +68,11 @@ render_col_profiling <- function(col_vals) {
     n_valid <- length(valid_vals)
     
     counts <- integer(5L)
+    svg_title <- "No valid values (n=0)"
     if (n_valid > 0L) {
       min_val <- min(valid_vals)
       max_val <- max(valid_vals)
+      svg_title <- sprintf("Range: [%s, %s] (n=%d)", format(min_val, digits = 3), format(max_val, digits = 3), n_valid)
       if (min_val == max_val) {
         counts[3L] <- n_valid
       } else {
@@ -98,21 +102,25 @@ render_col_profiling <- function(col_vals) {
       "svg",
       list(
         class = "sideview-sparkline",
+        title = svg_title,
         viewBox = "0 0 50 14",
         width = "50",
         height = "14",
         rect_tags
       )
     )
-  } else if (is.character(col_vals) || is.factor(col_vals)) {
+  } else if (is.character(col_vals) || is.factor(col_vals) || is.logical(col_vals)) {
     valid_vals <- col_vals[!is.na(col_vals)]
     n_valid <- length(valid_vals)
     
     if (n_valid > 0L) {
-      tbl <- sort(table(as.character(valid_vals)), decreasing = TRUE)
+      is_sampled <- n_valid > 25000L
+      tab_vals <- if (is_sampled) valid_vals[sample.int(n_valid, 25000L)] else valid_vals
+      n_tab <- length(tab_vals)
+      tbl <- sort(table(as.character(tab_vals)), decreasing = TRUE)
       top_val <- names(tbl)[1L]
       top_cnt <- as.integer(tbl[1L])
-      top_pct <- round(top_cnt / n_valid * 100)
+      top_pct <- round(top_cnt / n_tab * 100)
       n_unique <- length(tbl)
       
       display_label <- if (nzchar(top_val)) {
@@ -121,7 +129,11 @@ render_col_profiling <- function(col_vals) {
         '""'
       }
       
-      title_str <- sprintf("Top: %s (%d%%, %d/%d) | %d distinct", top_val, top_pct, top_cnt, n_valid, n_unique)
+      title_str <- if (is_sampled) {
+        sprintf("Top: %s (~%d%%, sampled %d/%d) | ~%d distinct", top_val, top_pct, top_cnt, n_tab, n_unique)
+      } else {
+        sprintf("Top: %s (%d%%, %d/%d) | %d distinct", top_val, top_pct, top_cnt, n_valid, n_unique)
+      }
       
       profile_indicator <- htmltools::tags$span(
         class = "sideview-cat-profile",

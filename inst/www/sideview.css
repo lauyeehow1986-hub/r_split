@@ -272,6 +272,7 @@
   color: var(--sv-text);
   font-weight: 600;
   padding: 8px 12px;
+  vertical-align: top;
   border-bottom: 2px solid var(--sv-border);
   border-right: 1px solid var(--sv-border-light);
   white-space: nowrap;
