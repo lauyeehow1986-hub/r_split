@@ -1342,8 +1342,8 @@ function sendToShiny(name, value) {
           conn.path.parentNode.removeChild(conn.path);
         }
       });
-      this.suggestedConnections = [];
     }
+    this.suggestedConnections = [];
     if (this.svg) {
       var oldSuggested = this.svg.querySelectorAll('.sideview-spline-suggested');
       for (var i = 0; i < oldSuggested.length; i++) {
@@ -1552,7 +1552,8 @@ function sendToShiny(name, value) {
     var viewportRect = this.viewport.getBoundingClientRect();
     var scale = this.panzoom ? this.panzoom.getScale() : 1;
 
-    this.connections.forEach(function (conn) {
+    var allConns = (this.connections || []).concat(this.suggestedConnections || []);
+    allConns.forEach(function (conn) {
       if (!conn.fromElement || !conn.toElement || !conn.path) return;
 
       var r1 = conn.fromElement.getBoundingClientRect();
@@ -1596,6 +1597,9 @@ function sendToShiny(name, value) {
    */
   SideviewEngine.prototype.clearOperations = function (silent) {
     var self = this;
+
+    // 0. Remove suggested splines and reset suggested connections
+    this.clearSuggestedSplines();
 
     // 1. Remove all SVG connector paths from the DOM
     if (this.connections && this.connections.length > 0) {

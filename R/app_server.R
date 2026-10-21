@@ -225,6 +225,8 @@ sideview_server_impl <- function(input, output, session, cards, llm_fn, insert_f
       dispatch_message("sideview_discrepancies", list(
         from_table = tbl1,
         to_table = tbl2,
+        from_col = col1,
+        to_col = col2,
         exact_matches = disc$exact_matches,
         fuzzy_matches = disc$fuzzy_matches,
         only_in_x = disc$only_in_x,

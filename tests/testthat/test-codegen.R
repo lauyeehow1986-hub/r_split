@@ -635,4 +635,59 @@ test_that("sv_auto_clean_rules generates executable case_match cleanup pipelines
   expect_equal(code_alias, code_case)
 })
 
+test_that("sv_code functions return valid non-empty strings with NULL or empty df and pipe = TRUE", {
+  # sv_code_rename
+  r1 <- sv_code_rename(NULL, "a", "b", pipe = TRUE)
+  expect_type(r1, "character")
+  expect_length(r1, 1L)
+  expect_false(identical(r1, character(0)))
+  expect_equal(r1, "dplyr::rename(b = a)")
+  expect_silent(parse(text = r1))
+
+  r2 <- sv_code_rename("", "a", "b", pipe = TRUE)
+  expect_equal(r2, "dplyr::rename(b = a)")
+  expect_false(identical(r2, character(0)))
+  expect_silent(parse(text = r2))
+
+  # sv_code_filter
+  f1 <- sv_code_filter(NULL, "x > 1", pipe = TRUE)
+  expect_type(f1, "character")
+  expect_length(f1, 1L)
+  expect_false(identical(f1, character(0)))
+  expect_equal(f1, "dplyr::filter(x > 1)")
+  expect_silent(parse(text = f1))
+
+  f2 <- sv_code_filter("", "x > 1", pipe = TRUE)
+  expect_equal(f2, "dplyr::filter(x > 1)")
+  expect_false(identical(f2, character(0)))
+  expect_silent(parse(text = f2))
+
+  # sv_code_arrange
+  a1 <- sv_code_arrange(NULL, "x", pipe = TRUE)
+  expect_type(a1, "character")
+  expect_length(a1, 1L)
+  expect_false(identical(a1, character(0)))
+  expect_equal(a1, "dplyr::arrange(x)")
+  expect_silent(parse(text = a1))
+
+  a2 <- sv_code_arrange("", "x", pipe = TRUE)
+  expect_equal(a2, "dplyr::arrange(x)")
+  expect_false(identical(a2, character(0)))
+  expect_silent(parse(text = a2))
+
+  # sv_code_select
+  s1 <- sv_code_select(NULL, "x", pipe = TRUE)
+  expect_type(s1, "character")
+  expect_length(s1, 1L)
+  expect_false(identical(s1, character(0)))
+  expect_equal(s1, "dplyr::select(x)")
+  expect_silent(parse(text = s1))
+
+  s2 <- sv_code_select("", "x", pipe = TRUE)
+  expect_equal(s2, "dplyr::select(x)")
+  expect_false(identical(s2, character(0)))
+  expect_silent(parse(text = s2))
+})
+
+
 

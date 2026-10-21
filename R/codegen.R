@@ -42,7 +42,11 @@ sv_code_rename <- function(df_name, old_col, new_col, pipe = FALSE) {
   
   if (pipe) {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
-    sprintf("%s %%>%% dplyr::rename(%s)", esc_df, args)
+    if (is.null(esc_df)) {
+      sprintf("dplyr::rename(%s)", args)
+    } else {
+      sprintf("%s %%>%% dplyr::rename(%s)", esc_df, args)
+    }
   } else {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
     if (is.null(esc_df)) {
@@ -168,7 +172,11 @@ sv_code_filter <- function(df_name, condition, pipe = FALSE) {
   args <- paste(condition, collapse = ", ")
   if (pipe) {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
-    sprintf("%s %%>%% dplyr::filter(%s)", esc_df, args)
+    if (is.null(esc_df)) {
+      sprintf("dplyr::filter(%s)", args)
+    } else {
+      sprintf("%s %%>%% dplyr::filter(%s)", esc_df, args)
+    }
   } else {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
     if (is.null(esc_df)) {
@@ -207,7 +215,11 @@ sv_code_arrange <- function(df_name, col, desc = FALSE, pipe = FALSE) {
   
   if (pipe) {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
-    sprintf("%s %%>%% dplyr::arrange(%s)", esc_df, args)
+    if (is.null(esc_df)) {
+      sprintf("dplyr::arrange(%s)", args)
+    } else {
+      sprintf("%s %%>%% dplyr::arrange(%s)", esc_df, args)
+    }
   } else {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
     if (is.null(esc_df)) {
@@ -230,7 +242,11 @@ sv_code_select <- function(df_name, cols, pipe = FALSE) {
   args <- paste(esc_cols, collapse = ", ")
   if (pipe) {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
-    sprintf("%s %%>%% dplyr::select(%s)", esc_df, args)
+    if (is.null(esc_df)) {
+      sprintf("dplyr::select(%s)", args)
+    } else {
+      sprintf("%s %%>%% dplyr::select(%s)", esc_df, args)
+    }
   } else {
     esc_df <- if (is.null(df_name) || !nzchar(df_name)) NULL else sv_escape_ident(df_name)
     if (is.null(esc_df)) {

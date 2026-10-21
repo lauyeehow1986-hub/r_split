@@ -354,3 +354,29 @@ test_that("sideview.js and sideview.css support suggested splines and auto-clean
   }
 
 })
+
+test_that("updateConnectors includes suggestedConnections and clearOperations calls clearSuggestedSplines", {
+  js <- read_asset("sideview.js")
+
+  # 1. updateConnectors must iterate over both connections and suggestedConnections
+  expect_match(js, "suggestedConnections", info = "sideview.js must define or use suggestedConnections")
+  expect_match(
+    js,
+    "var\\s+allConns\\s*=\\s*\\(this\\.connections\\s*\\|\\|\\s*\\[\\]\\)\\.concat\\(this\\.suggestedConnections\\s*\\|\\|\\s*\\[\\]\\);",
+    info = "updateConnectors must combine this.connections and this.suggestedConnections"
+  )
+  expect_match(
+    js,
+    "allConns\\.forEach\\(function\\s*\\(conn\\)",
+    info = "updateConnectors must iterate over allConns"
+  )
+
+  # 2. clearOperations must call clearSuggestedSplines
+  expect_match(
+    js,
+    "SideviewEngine\\.prototype\\.clearOperations\\s*=\\s*function[\\s\\S]*?this\\.clearSuggestedSplines\\(\\)",
+    perl = TRUE,
+    info = "clearOperations must call this.clearSuggestedSplines()"
+  )
+})
+
