@@ -25,6 +25,11 @@ function sendToShiny(name, value) {
     }
   }
 
+  // Module-level cached Intl.Collator for high-performance 100k+ row string sorting
+  var _sideviewCollator = (typeof Intl !== 'undefined' && Intl.Collator)
+    ? new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+    : null;
+
   /**
    * VirtualTable - High-performance virtualized table renderer for 100k+ rows
    * Maintains accurate scrollbars via top/bottom spacers while rendering only visible rows + buffer.
@@ -316,7 +321,9 @@ function sendToShiny(name, value) {
         } else {
           var strA = String(valA || '');
           var strB = String(valB || '');
-          cmp = strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+          cmp = _sideviewCollator
+            ? _sideviewCollator.compare(strA, strB)
+            : strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
         }
         return direction === 'asc' ? cmp : -cmp;
       });
@@ -357,6 +364,7 @@ function sendToShiny(name, value) {
     var colIndex = this.currentFilter.colIndex;
     var op = this.currentFilter.operator;
     var val = this.currentFilter.value;
+    var lowerVal = String(val || '').toLowerCase();
     var numVal = parseFloat(val);
     var isNumFilter = !isNaN(numVal);
 
@@ -370,11 +378,11 @@ function sendToShiny(name, value) {
       var numCell = parseFloat(text);
 
       if (op === 'contains') {
-        return text.toLowerCase().indexOf(val.toLowerCase()) !== -1;
+        return text.toLowerCase().indexOf(lowerVal) !== -1;
       } else if (op === 'equals') {
-        return isNumFilter && !isNaN(numCell) ? numCell === numVal : text.toLowerCase() === val.toLowerCase();
+        return isNumFilter && !isNaN(numCell) ? numCell === numVal : text.toLowerCase() === lowerVal;
       } else if (op === 'not_equals') {
-        return isNumFilter && !isNaN(numCell) ? numCell !== numVal : text.toLowerCase() !== val.toLowerCase();
+        return isNumFilter && !isNaN(numCell) ? numCell !== numVal : text.toLowerCase() !== lowerVal;
       } else if (op === 'gt') {
         return !isNaN(numCell) && numCell > numVal;
       } else if (op === 'gte') {
@@ -411,6 +419,40 @@ function sendToShiny(name, value) {
     this.highlightedColumns.clear();
     this.highlightedCells.clear();
     this.render();
+  };
+
+  VirtualTable.prototype.renameColumn = function (oldName, newName, colIndex) {
+    if (colIndex !== undefined && colIndex !== null && colIndex >= 0 && colIndex < this.colNames.length) {
+      this.colNames[colIndex] = newName;
+    } else {
+      var idx = this.colNames.indexOf(oldName);
+      if (idx !== -1) {
+        this.colNames[idx] = newName;
+      }
+    }
+    if (this.data && typeof this.data === 'object' && !Array.isArray(this.data)) {
+      if (this.data.hasOwnProperty(oldName) || this.data[oldName] !== undefined) {
+        this.data[newName] = this.data[oldName];
+        delete this.data[oldName];
+      }
+    }
+    if (this.sortState && this.sortState.colName === oldName) {
+      this.sortState.colName = newName;
+    }
+    if (this.currentFilter && this.currentFilter.colName === oldName) {
+      this.currentFilter.colName = newName;
+    }
+    if (this.highlightedColumns && this.highlightedColumns.has(oldName)) {
+      var color = this.highlightedColumns.get(oldName);
+      this.highlightedColumns.delete(oldName);
+      this.highlightedColumns.set(newName, color);
+    }
+  };
+
+  VirtualTable.prototype.destroy = function () {
+    if (this.scrollContainer && typeof this.scrollContainer.removeEventListener === 'function' && this._scrollHandler) {
+      this.scrollContainer.removeEventListener('scroll', this._scrollHandler);
+    }
   };
 
   function SideviewEngine(containerElement, options) {
@@ -912,6 +954,10 @@ function sendToShiny(name, value) {
 
         if (newName && newName !== currentName) {
           colNameEl.textContent = newName;
+          var table = (th && th.closest('table')) || {};
+          if (table._virtualTable) {
+            table._virtualTable.renameColumn(currentName, newName, th.cellIndex);
+          }
           if (th) {
             th.dataset.colName = newName;
             var port = th.querySelector('.sideview-col-port');

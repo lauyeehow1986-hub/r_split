@@ -169,6 +169,14 @@ test_that("sideview.js and sideview.css implement DOM virtualization for high ro
   expect_match(js, "scrollTop",
                info = "sideview.js must listen to scroll events and calculate scrollTop offset")
 
+  # Performance optimization and column rename synchronization
+  expect_match(js, "_sideviewCollator",
+               info = "sideview.js must define cached _sideviewCollator for high-performance string sorting")
+  expect_match(js, "VirtualTable\\.prototype\\.renameColumn|renameColumn",
+               info = "sideview.js must define renameColumn method on VirtualTable")
+  expect_match(js, "VirtualTable\\.prototype\\.destroy|\\.destroy\\s*=",
+               info = "sideview.js must define destroy method on VirtualTable")
+
   # CSS classes for virtual scrolling
   expect_match(css, "\\.sideview-virtual-spacer",
                info = "sideview.css must contain .sideview-virtual-spacer rule")
@@ -267,6 +275,11 @@ test_that("VirtualTable JavaScript engine executes 100k row virtualization corre
     "    this._listeners[event] = this._listeners[event] || [];",
     "    this._listeners[event].push(fn);",
     "  }",
+    "  removeEventListener(event, fn) {",
+    "    if (!this._listeners[event]) return;",
+    "    const idx = this._listeners[event].indexOf(fn);",
+    "    if (idx !== -1) this._listeners[event].splice(idx, 1);",
+    "  }",
     "}",
     "global.document = {",
     "  createElement: (tag) => new MockElement(tag),",
@@ -295,6 +308,9 @@ test_that("VirtualTable JavaScript engine executes 100k row virtualization corre
     "if (parseInt(topRowSorted.dataset.rowIndex, 10) !== 99999) throw new Error('Sort desc failed');",
     "const matches = vt.filter(0, 'id', 'equals', 'ID_42');",
     "if (matches !== 1) throw new Error('Filter equals failed');",
+    "vt.renameColumn('id', 'identifier', 0);",
+    "if (vt.colNames[0] !== 'identifier' || !vt.data['identifier'] || vt.data['id'] !== undefined) throw new Error('renameColumn failed');",
+    "vt.destroy();",
     "console.log('SUCCESS');"
   )
 

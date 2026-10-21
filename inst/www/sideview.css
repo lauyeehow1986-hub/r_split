@@ -887,12 +887,14 @@
   width: 100%;
 }
 
-.sideview-table tbody tr {
+.sideview-table-virtual tbody tr,
+.sideview-table.sideview-table-virtual tbody tr {
   height: 28px;
   box-sizing: border-box;
 }
 
-.sideview-table tbody td {
+.sideview-table-virtual tbody td,
+.sideview-table.sideview-table-virtual tbody td {
   height: 28px;
   box-sizing: border-box;
 }
