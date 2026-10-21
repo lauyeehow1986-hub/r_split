@@ -93,24 +93,65 @@ sv_suggest_mappings <- function(cards, ..., min_confidence = 0.6) {
   candidates <- list()
   n_cards <- length(valid_cards)
 
+  # Precompute unique sets and column metadata once per table
+  # Sampling up to 10,000 rows if nrow > 10,000
+  table_cols <- vector("list", n_cards)
+  for (k in seq_len(n_cards)) {
+    df_k <- valid_cards[[k]]$data
+    nr <- nrow(df_k)
+    sample_rows <- if (nr > 10000L) sample.int(nr, 10000L) else NULL
+
+    col_data <- vector("list", ncol(df_k))
+    names(col_data) <- names(df_k)
+
+    for (col_name in names(df_k)) {
+      raw_vec <- df_k[[col_name]]
+      is_log <- is.logical(raw_vec)
+
+      u_vals <- if (is_log || !is.atomic(raw_vec)) {
+        character(0)
+      } else {
+        vec_sample <- if (!is.null(sample_rows)) raw_vec[sample_rows] else raw_vec
+        clean <- vec_sample[!is.na(vec_sample)]
+        if (length(clean) > 0L) unique(clean) else character(0)
+      }
+
+      col_data[[col_name]] <- list(
+        raw = raw_vec,
+        is_logical = is_log,
+        unique = u_vals
+      )
+    }
+    table_cols[[k]] <- col_data
+  }
+
   # Pairwise iteration across loaded cards (c1, c2)
   for (i in seq_len(n_cards - 1L)) {
     for (j in seq.int(i + 1L, n_cards)) {
       c1 <- valid_cards[[i]]
       c2 <- valid_cards[[j]]
 
-      df1 <- c1$data
-      df2 <- c2$data
+      cols1_info <- table_cols[[i]]
+      cols2_info <- table_cols[[j]]
 
-      cols1 <- names(df1)
-      cols2 <- names(df2)
+      for (col1 in names(cols1_info)) {
+        info1 <- cols1_info[[col1]]
+        if (info1$is_logical) next
 
-      for (col1 in cols1) {
-        v1 <- df1[[col1]]
-        for (col2 in cols2) {
-          v2 <- df2[[col2]]
+        for (col2 in names(cols2_info)) {
+          info2 <- cols2_info[[col2]]
+          if (info2$is_logical) next
 
-          pair_result <- .score_column_pair(col1, v1, col2, v2)
+          pair_result <- .score_column_pair(
+            col1 = col1,
+            v1 = info1$raw,
+            col2 = col2,
+            v2 = info2$raw,
+            u1 = info1$unique,
+            u2 = info2$unique,
+            min_confidence = min_conf
+          )
+
           if (pair_result$confidence >= min_conf) {
             candidates[[length(candidates) + 1L]] <- list(
               from_table = c1$name,
@@ -163,10 +204,33 @@ sv_suggest_mappings <- function(cards, ..., min_confidence = 0.6) {
 
 #' Internal: Score a pair of columns based on name similarity, type compatibility, and Jaccard overlap
 #' @noRd
-.score_column_pair <- function(col1, v1, col2, v2) {
+.score_column_pair <- function(col1, v1, col2, v2, u1 = NULL, u2 = NULL, min_confidence = 0.0) {
+  if (is.logical(v1) || is.logical(v2)) {
+    return(list(
+      confidence = 0.0,
+      reason = "Logical/boolean columns excluded",
+      name_sim = 0.0,
+      type_compat = 0.0,
+      jaccard = 0.0
+    ))
+  }
+
   name_res <- .compute_name_similarity(col1, col2)
   type_compat <- .compute_type_compatibility(v1, v2)
-  jaccard <- .compute_jaccard_overlap(v1, v2)
+
+  # Early exit pruning: if theoretical max score is below min_confidence, skip set operations
+  max_possible <- (0.40 * name_res$similarity) + (0.20 * type_compat) + 0.40
+  if (max_possible < min_confidence) {
+    return(list(
+      confidence = 0.0,
+      reason = "Pruned: maximum possible confidence below threshold",
+      name_sim = name_res$similarity,
+      type_compat = type_compat,
+      jaccard = 0.0
+    ))
+  }
+
+  jaccard <- .compute_jaccard_overlap(v1, v2, u1 = u1, u2 = u2)
 
   # Composite score = 0.40 * name_sim + 0.20 * type_compat + 0.40 * jaccard
   composite <- 0.40 * name_res$similarity + 0.20 * type_compat + 0.40 * jaccard
@@ -193,11 +257,12 @@ sv_suggest_mappings <- function(cards, ..., min_confidence = 0.6) {
     return(list(similarity = 0.0, has_id_suffix = FALSE))
   }
 
-  has_id1 <- grepl("id$", s1)
-  has_id2 <- grepl("id$", s2)
+  has_id1 <- grepl("(^|[_.-])id$", s1) || grepl("(^|[a-z])Id$", as.character(col1))
+  has_id2 <- grepl("(^|[_.-])id$", s2) || grepl("(^|[a-z])Id$", as.character(col2))
+  has_id_suffix <- has_id1 && has_id2
 
   if (identical(s1, s2)) {
-    return(list(similarity = 1.0, has_id_suffix = (has_id1 && has_id2)))
+    return(list(similarity = 1.0, has_id_suffix = has_id_suffix))
   }
 
   # Raw string Levenshtein distance
@@ -214,11 +279,6 @@ sv_suggest_mappings <- function(cards, ..., min_confidence = 0.6) {
 
   base_sim <- max(sim_raw, sim_clean)
 
-  # Check ID suffixes (id$)
-  has_clean_id1 <- grepl("id$", s1_clean)
-  has_clean_id2 <- grepl("id$", s2_clean)
-
-  has_id_suffix <- (has_id1 || has_clean_id1) && (has_id2 || has_clean_id2)
   bonus <- if (has_id_suffix) 0.20 else 0.0
 
   final_sim <- min(1.0, max(0.0, base_sim + bonus))
@@ -259,20 +319,32 @@ sv_suggest_mappings <- function(cards, ..., min_confidence = 0.6) {
 
 #' Internal: Compute Jaccard value overlap
 #' @noRd
-.compute_jaccard_overlap <- function(v1, v2) {
-  if (!is.atomic(v1) || !is.atomic(v2)) {
-    return(0.0)
+.compute_jaccard_overlap <- function(v1, v2, u1 = NULL, u2 = NULL) {
+  if (is.null(u1)) {
+    if (!is.atomic(v1)) {
+      return(0.0)
+    }
+    clean1 <- v1[!is.na(v1)]
+    if (length(clean1) == 0L) {
+      return(0.0)
+    }
+    u1 <- unique(clean1)
   }
 
-  clean1 <- v1[!is.na(v1)]
-  clean2 <- v2[!is.na(v2)]
-
-  if (length(clean1) == 0L || length(clean2) == 0L) {
-    return(0.0)
+  if (is.null(u2)) {
+    if (!is.atomic(v2)) {
+      return(0.0)
+    }
+    clean2 <- v2[!is.na(v2)]
+    if (length(clean2) == 0L) {
+      return(0.0)
+    }
+    u2 <- unique(clean2)
   }
 
-  u1 <- unique(clean1)
-  u2 <- unique(clean2)
+  if (length(u1) == 0L || length(u2) == 0L) {
+    return(0.0)
+  }
 
   intersection_len <- length(intersect(u1, u2))
   union_len <- length(union(u1, u2))

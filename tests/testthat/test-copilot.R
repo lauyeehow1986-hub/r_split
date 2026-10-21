@@ -185,3 +185,27 @@ test_that("results are sorted by confidence descending", {
     expect_true(all(diffs <= 0))
   }
 })
+
+test_that("logical/boolean columns (e.g. is_active vs is_deleted) are not suggested as foreign keys", {
+  df1 <- data.frame(
+    id = 1:10,
+    is_active = rep(c(TRUE, FALSE), 5),
+    stringsAsFactors = FALSE
+  )
+  df2 <- data.frame(
+    id = 1:10,
+    is_deleted = rep(c(FALSE, TRUE), 5),
+    is_active = rep(c(TRUE, FALSE), 5),
+    stringsAsFactors = FALSE
+  )
+
+  # Even with identical names or high overlap, logical columns should never be suggested
+  mappings <- sv_suggest_mappings(list(t1 = df1, t2 = df2), min_confidence = 0.0)
+
+  expect_false(any(mappings$from_col == "is_active"))
+  expect_false(any(mappings$to_col == "is_active"))
+  expect_false(any(mappings$to_col == "is_deleted"))
+
+  # The integer id <-> id foreign key match should still be suggested
+  expect_true(any(mappings$from_col == "id" & mappings$to_col == "id"))
+})
