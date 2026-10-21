@@ -4,7 +4,7 @@
 \alias{sv_load_state}
 \title{Load Canvas State from File}
 \usage{
-sv_load_state(file, tables = NULL, launch = FALSE)
+sv_load_state(file, tables = NULL, launch = FALSE, format = NULL)
 }
 \arguments{
 \item{file}{Path to the saved state file (\code{.json} or \code{.rds}).}
@@ -14,6 +14,9 @@ If \code{NULL}, tables are discovered from the calling environment.}
 
 \item{launch}{Logical; if \code{TRUE} and the session is interactive, launches \code{sideview()}
 with the loaded state. If non-interactive, returns the loaded state object.}
+
+\item{format}{Optional format specification (\code{"json"} or \code{"rds"}). If \code{NULL} (default),
+the format is inferred from the file extension (\code{.json} or \code{.rds}).}
 }
 \value{
 A \code{sideview_state} object of class \code{c("sideview_state", "list")}, or the gadget

@@ -42,7 +42,7 @@ new_sideview_state <- function(version = "0.2.0",
 #' @param state A `sideview_state` object or structured state list.
 #' @param file Path to the destination file.
 #' @param format Optional format specification (`"json"` or `"rds"`). If `NULL` (default),
-#'   the format is inferred from the file extension (`.json` -> `"json"`, otherwise `"rds"`).
+#'   the format is inferred from the file extension (`.json` or `.rds`).
 #'
 #' @return Invisibly returns the path of the saved file.
 #' @export
@@ -54,11 +54,15 @@ new_sideview_state <- function(version = "0.2.0",
 sv_save_state <- function(state, file, format = NULL) {
   if (is.null(format)) {
     ext <- tolower(tools::file_ext(file))
-    format <- if (ext == "json") "json" else "rds"
+    if (ext %in% c("json", "rds")) {
+      format <- ext
+    } else {
+      stop("Cannot infer format from file extension '", ext, "'. Expected 'json' or 'rds'.", call. = FALSE)
+    }
   } else {
     format <- tolower(format)
     if (!format %in% c("json", "rds")) {
-      stop("Invalid format '", format, "'. Supported formats are 'json' and 'rds'.")
+      stop("Invalid format '", format, "'. Supported formats are 'json' and 'rds'.", call. = FALSE)
     }
   }
 
@@ -87,6 +91,8 @@ sv_save_state <- function(state, file, format = NULL) {
 #'   If `NULL`, tables are discovered from the calling environment.
 #' @param launch Logical; if `TRUE` and the session is interactive, launches `sideview()`
 #'   with the loaded state. If non-interactive, returns the loaded state object.
+#' @param format Optional format specification (`"json"` or `"rds"`). If `NULL` (default),
+#'   the format is inferred from the file extension (`.json` or `.rds`).
 #'
 #' @return A `sideview_state` object of class `c("sideview_state", "list")`, or the gadget
 #'   result if `launch = TRUE` in an interactive session.
@@ -98,18 +104,33 @@ sv_save_state <- function(state, file, format = NULL) {
 #' loaded <- sv_load_state(tf)
 #' print(loaded)
 #' unlink(tf)
-sv_load_state <- function(file, tables = NULL, launch = FALSE) {
+sv_load_state <- function(file, tables = NULL, launch = FALSE, format = NULL) {
   if (!file.exists(file)) {
-    stop("State file does not exist: ", file)
+    stop("State file does not exist: ", file, call. = FALSE)
   }
 
-  ext <- tolower(tools::file_ext(file))
-  if (ext == "json") {
-    state <- jsonlite::fromJSON(file, simplifyVector = FALSE)
-  } else if (ext == "rds") {
-    state <- readRDS(file)
+  if (is.null(format)) {
+    ext <- tolower(tools::file_ext(file))
+    if (ext %in% c("json", "rds")) {
+      format <- ext
+    } else {
+      stop("Invalid or unsupported file format: '", ext, "'. Expected 'json' or 'rds'.", call. = FALSE)
+    }
   } else {
-    stop("Invalid or unsupported file format: '", ext, "'. Expected 'json' or 'rds'.")
+    format <- tolower(format)
+    if (!format %in% c("json", "rds")) {
+      stop("Invalid format '", format, "'. Supported formats are 'json' and 'rds'.", call. = FALSE)
+    }
+  }
+
+  if (format == "json") {
+    state <- jsonlite::fromJSON(file, simplifyVector = FALSE)
+  } else {
+    state <- readRDS(file)
+  }
+
+  if (!is.list(state)) {
+    stop("Invalid state file: root object must be a list.", call. = FALSE)
   }
 
   class(state) <- c("sideview_state", "list")

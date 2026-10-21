@@ -12,7 +12,7 @@ sv_save_state(state, file, format = NULL)
 \item{file}{Path to the destination file.}
 
 \item{format}{Optional format specification (\code{"json"} or \code{"rds"}). If \code{NULL} (default),
-the format is inferred from the file extension (\code{.json} -> \code{"json"}, otherwise \code{"rds"}).}
+the format is inferred from the file extension (\code{.json} or \code{.rds}).}
 }
 \value{
 Invisibly returns the path of the saved file.

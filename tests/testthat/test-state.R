@@ -155,6 +155,9 @@ test_that("sv_save_state and sv_load_state error handling", {
   
   # Invalid format in save
   expect_error(sv_save_state(st, tempfile(), format = "xml"), "Invalid format")
+
+  # Unrecognized extension without format in save
+  expect_error(sv_save_state(st, tempfile(fileext = ".xyz")), "Cannot infer format")
   
   # Non-existent file in load
   expect_error(sv_load_state("non_existent_state_file_12345.json"), "does not exist")
@@ -164,6 +167,61 @@ test_that("sv_save_state and sv_load_state error handling", {
   writeLines("hello", tf_txt)
   on.exit(unlink(tf_txt), add = TRUE)
   expect_error(sv_load_state(tf_txt), "Invalid or unsupported")
+
+  # Invalid format in load
+  expect_error(sv_load_state(tf_txt, format = "xml"), "Invalid format")
+})
+
+test_that("sv_load_state loads non-standard extensions when format is explicitly specified", {
+  tf_custom <- tempfile(fileext = ".canvas")
+  on.exit(unlink(tf_custom), add = TRUE)
+
+  st <- new_sideview_state(
+    version = "0.2.0",
+    canvas = list(zoom = 1.25, pan_x = 42, pan_y = -10)
+  )
+  sv_save_state(st, tf_custom, format = "json")
+
+  # Without format, loading non-standard extension fails
+  expect_error(sv_load_state(tf_custom), "Invalid or unsupported")
+
+  # With explicit format = "json", it succeeds
+  loaded <- sv_load_state(tf_custom, format = "json")
+  expect_s3_class(loaded, "sideview_state")
+  expect_equal(loaded$version, "0.2.0")
+  expect_equal(loaded$canvas$zoom, 1.25)
+  expect_equal(loaded$canvas$pan_x, 42)
+})
+
+test_that("sv_save_state creates missing nested directories", {
+  nested_dir <- file.path(tempdir(), paste0("test_nested_", as.integer(runif(1, 1000, 9999))), "deep", "nested")
+  tf_nested <- file.path(nested_dir, "state.json")
+  on.exit(unlink(dirname(dirname(nested_dir)), recursive = TRUE), add = TRUE)
+
+  expect_false(dir.exists(nested_dir))
+
+  st <- new_sideview_state()
+  res <- sv_save_state(st, tf_nested)
+  expect_equal(res, tf_nested)
+  expect_true(dir.exists(nested_dir))
+  expect_true(file.exists(tf_nested))
+
+  loaded <- sv_load_state(tf_nested)
+  expect_s3_class(loaded, "sideview_state")
+})
+
+test_that("sv_load_state rejects corrupted non-list state files with informative error", {
+  tf_json <- tempfile(fileext = ".json")
+  tf_rds <- tempfile(fileext = ".rds")
+  on.exit(unlink(c(tf_json, tf_rds)), add = TRUE)
+
+  # Non-list JSON scalar
+  writeLines('"not a list or object"', tf_json)
+  expect_error(sv_load_state(tf_json), "root object must be a list")
+
+  # Non-list RDS scalar
+  saveRDS("not a list or object", tf_rds)
+  expect_error(sv_load_state(tf_rds), "root object must be a list")
 })
 
 test_that("print.sideview_state displays clean summary", {
