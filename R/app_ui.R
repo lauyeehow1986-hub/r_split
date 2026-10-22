@@ -200,6 +200,12 @@ render_card_tag <- function(card, index = 1L) {
       class = "sideview-card-actions",
       htmltools::tags$button(
         class = "sideview-icon-btn",
+        `data-action` = "maximize-card",
+        title = "Maximize / Restore Card",
+        htmltools::HTML("&#x26F6;")
+      ),
+      htmltools::tags$button(
+        class = "sideview-icon-btn",
         `data-action` = "sync-scroll",
         title = "Synchronize vertical & horizontal scrolling",
         htmltools::HTML("&#128279;")
@@ -228,13 +234,14 @@ render_card_tag <- function(card, index = 1L) {
       
       htmltools::tags$th(
         `data-col-name` = col,
+        title = if (nzchar(c_type)) sprintf("%s (%s)", col, c_type) else col,
         htmltools::tags$div(
           class = "col-header-wrap",
           htmltools::tags$div(
             class = "col-header-left",
             htmltools::tags$span(class = "sideview-col-name", col),
             if (!is.null(c_type) && !is.na(c_type) && nzchar(c_type)) {
-              htmltools::tags$span(class = "sideview-col-type", paste0("(", c_type, ")"))
+              htmltools::tags$span(class = "sideview-col-type", paste0("(", c_type, ")"), title = paste0("Type: ", c_type))
             }
           ),
           htmltools::tags$div(
@@ -244,7 +251,8 @@ render_card_tag <- function(card, index = 1L) {
             htmltools::tags$span(class = "sideview-col-port", `data-col-name` = col, title = "Connect to map field")
           ),
           profile_summary
-        )
+        ),
+        htmltools::tags$span(class = "sideview-col-resizer", title = "Drag to resize column width")
       )
     })
     # Table rows (virtualized preview up to 500 rows)

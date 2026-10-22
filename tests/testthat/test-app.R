@@ -712,4 +712,22 @@ test_that("sideview viewer defaults adapt to RStudio environment", {
   )
 })
 
+test_that("render_card_tag renders maximize button and column resizers", {
+  df <- data.frame(mpg = c(21, 21), cyl = c(6, 6))
+  card <- sv_normalize(df, name = "mtcars")
+  rendered <- as.character(render_card_tag(card))
+
+  # Assert maximize button
+  expect_match(rendered, "data-action=\"maximize-card\"", fixed = TRUE)
+  expect_match(rendered, "&#x26F6;", fixed = TRUE)
+
+  # Assert column boundary resizer
+  expect_match(rendered, "sideview-col-resizer", fixed = TRUE)
+
+  # Assert column title with type
+  expect_match(rendered, "title=\"mpg (numeric)\"", fixed = TRUE)
+  expect_match(rendered, "title=\"cyl (numeric)\"", fixed = TRUE)
+})
+
+
 

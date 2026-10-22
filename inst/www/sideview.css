@@ -149,7 +149,7 @@
 .sideview-card {
   position: absolute;
   min-width: 320px;
-  max-width: 600px;
+  max-width: none;
   background: var(--sv-surface);
   border: 1px solid var(--sv-border);
   border-radius: var(--sv-radius);
@@ -159,6 +159,28 @@
   z-index: 10;
   cursor: default;
   transition: box-shadow var(--sv-transition), border-color var(--sv-transition);
+  resize: both;
+  overflow: hidden;
+}
+
+.sideview-card.is-maximized {
+  position: fixed !important;
+  top: 55px !important;
+  left: 20px !important;
+  right: 20px !important;
+  bottom: 30px !important;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: none !important;
+  z-index: 85 !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45) !important;
+}
+
+.sideview-card.is-maximized .sideview-card-body {
+  max-height: none !important;
+  height: calc(100% - 46px) !important;
+  flex: 1;
 }
 
 .sideview-card.is-dragging {
@@ -277,6 +299,28 @@
   border-right: 1px solid var(--sv-border-light);
   white-space: nowrap;
   user-select: none;
+  min-width: 90px;
+  position: relative;
+}
+
+/* Draggable Column Boundary Resizer */
+.sideview-col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  bottom: 0;
+  cursor: col-resize;
+  user-select: none;
+  z-index: 10;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.sideview-col-resizer:hover,
+.sideview-col-resizer.is-resizing {
+  background: var(--sv-primary);
+  width: 6px;
 }
 
 .sideview-table th .col-header-wrap {

@@ -691,6 +691,15 @@ function sendToShiny(name, value) {
             b.style.display = b.style.display === 'none' ? '' : 'none';
           }
         }
+      } else if (action === 'maximize-card') {
+        var card = btn.closest('.sideview-card');
+        if (card) {
+          card.classList.toggle('is-maximized');
+          var isMax = card.classList.contains('is-maximized');
+          btn.innerHTML = isMax ? '&#x29C9;' : '&#x26F6;';
+          btn.title = isMax ? 'Restore Card' : 'Maximize / Restore Card';
+          self.updateConnectors();
+        }
       } else if (action === 'toggle-snap') {
         self.options.snapToEdge = !self.options.snapToEdge;
         btn.classList.toggle('active', self.options.snapToEdge);
@@ -1050,6 +1059,11 @@ function sendToShiny(name, value) {
       var toCardName = targetCardEl.dataset.cardName;
       var toColName = targetPort.dataset.colName;
 
+      // Guard: Ignore if clicking the same active starting port
+      if (targetPort === self.activePort.element) {
+        return;
+      }
+
       if (self.activePort.cardId === toCardId) {
         self.showToast('Cannot link columns within the same table', 'warning');
         cleanupDraft();
@@ -1092,6 +1106,7 @@ function sendToShiny(name, value) {
         // Active port is set (connecting)
         if (port) {
           e.stopPropagation();
+          if (port === self.activePort.element) return;
           var cardEl = port.closest('.sideview-card');
           if (cardEl) completeConnection(port, cardEl);
           return;
@@ -1101,6 +1116,7 @@ function sendToShiny(name, value) {
           var targetPort = th.querySelector('.sideview-col-port');
           var cardEl = th.closest('.sideview-card');
           if (targetPort && cardEl) {
+            if (targetPort === self.activePort.element) return;
             e.stopPropagation();
             completeConnection(targetPort, cardEl);
             return;
@@ -1121,6 +1137,14 @@ function sendToShiny(name, value) {
       var cardEl = port.closest('.sideview-card');
       if (!cardEl) return;
       e.stopPropagation();
+
+      // If already connecting, do not re-initialize on starting port
+      if (self.activePort) {
+        if (port !== self.activePort.element) {
+          completeConnection(port, cardEl);
+        }
+        return;
+      }
 
       var startX = e.clientX;
       var startY = e.clientY;
@@ -1143,14 +1167,14 @@ function sendToShiny(name, value) {
           if (dropTarget) {
             var targetPort = dropTarget.closest('.sideview-col-port');
             var targetTh = dropTarget.closest('th');
-            if (targetPort) {
+            if (targetPort && targetPort !== port) {
               var targetCard = targetPort.closest('.sideview-card');
               if (targetCard) completeConnection(targetPort, targetCard);
               return;
             } else if (targetTh) {
               var p = targetTh.querySelector('.sideview-col-port');
               var c = targetTh.closest('.sideview-card');
-              if (p && c) {
+              if (p && p !== port && c) {
                 completeConnection(p, c);
                 return;
               }
@@ -1162,6 +1186,39 @@ function sendToShiny(name, value) {
 
       document.addEventListener('mousemove', onPointerDragMove);
       document.addEventListener('mouseup', onPointerDragUp);
+    });
+
+    // Column Width Resizing via drag on .sideview-col-resizer
+    this.container.addEventListener('mousedown', function (e) {
+      var resizer = e.target.closest('.sideview-col-resizer');
+      if (!resizer) return;
+      e.stopPropagation();
+      e.preventDefault();
+
+      var th = resizer.closest('th');
+      if (!th) return;
+
+      var startX = e.clientX;
+      var startWidth = th.offsetWidth;
+      resizer.classList.add('is-resizing');
+
+      function onColResizeMove(moveEvt) {
+        var dx = moveEvt.clientX - startX;
+        var newWidth = Math.max(65, startWidth + dx);
+        th.style.width = newWidth + 'px';
+        th.style.minWidth = newWidth + 'px';
+        self.updateConnectors();
+      }
+
+      function onColResizeUp() {
+        resizer.classList.remove('is-resizing');
+        document.removeEventListener('mousemove', onColResizeMove);
+        document.removeEventListener('mouseup', onColResizeUp);
+        self.updateConnectors();
+      }
+
+      document.addEventListener('mousemove', onColResizeMove);
+      document.addEventListener('mouseup', onColResizeUp);
     });
 
     // Pressing Escape cancels draft
@@ -1261,6 +1318,7 @@ function sendToShiny(name, value) {
       dimsText ? '  <span class="sideview-badge">' + dimsText + '</span>' : '',
       '</div>',
       '<div class="sideview-card-actions">',
+      '  <button class="sideview-icon-btn" data-action="maximize-card" title="Maximize / Restore Card">&#x26F6;</button>',
       '  <button class="sideview-icon-btn" data-action="sync-scroll" title="Synchronize vertical & horizontal scrolling">&#128279;</button>',
       '  <button class="sideview-icon-btn" data-action="minimize-card" title="Minimize">&minus;</button>',
       '</div>'
@@ -1285,6 +1343,7 @@ function sendToShiny(name, value) {
         var th = document.createElement('th');
         th.dataset.colName = colName;
         var colType = colTypes[colName] || '';
+        th.title = colType ? colName + ' (' + colType + ')' : colName;
         th.innerHTML = [
           '<div class="col-header-wrap">',
           '  <div class="col-header-left">',
@@ -1296,7 +1355,8 @@ function sendToShiny(name, value) {
           '    <button class="sideview-th-btn sideview-filter-btn" data-action="filter-col" data-col-name="' + colName + '" title="Filter column">&#x1F50D;</button>',
           '    <span class="sideview-col-port" data-col-name="' + colName + '" title="Connect to map field"></span>',
           '  </div>',
-          '</div>'
+          '</div>',
+          '<span class="sideview-col-resizer" title="Drag to resize column width"></span>'
         ].join('');
         headerRow.appendChild(th);
       });
