@@ -676,3 +676,40 @@ test_that("send_copilot_chat caps session copilot_history at sliding window limi
   })
 })
 
+test_that("render_card_tag encodes sort and filter icons as safe ASCII HTML entities", {
+  df <- data.frame(patient_id = 1:5, heart_rate = c(72, 80, 68, 90, 75))
+  card <- sv_normalize(df, name = "vitals")
+  rendered <- as.character(render_card_tag(card))
+  
+  # Assert safe ASCII HTML entities
+  expect_match(rendered, "&#x21C5;", fixed = TRUE)
+  expect_match(rendered, "&#x1F50D;", fixed = TRUE)
+  
+  # Assert complete absence of Windows codepage UTF-8 hex escape explosions
+  expect_false(grepl("<e2><87><85>", rendered, fixed = TRUE))
+  expect_false(grepl("<f0><9f><94><8d>", rendered, fixed = TRUE))
+})
+
+test_that("sideview viewer defaults adapt to RStudio environment", {
+  # When rstudioapi::isAvailable() returns TRUE
+  testthat::with_mocked_bindings(
+    isAvailable = function(...) TRUE,
+    .package = "rstudioapi",
+    code = {
+      app <- sideview(mtcars, run = FALSE)
+      expect_s3_class(app, "shiny.appobj")
+    }
+  )
+
+  # When rstudioapi::isAvailable() returns FALSE
+  testthat::with_mocked_bindings(
+    isAvailable = function(...) FALSE,
+    .package = "rstudioapi",
+    code = {
+      app <- sideview(mtcars, run = FALSE)
+      expect_s3_class(app, "shiny.appobj")
+    }
+  )
+})
+
+

@@ -7,7 +7,13 @@
 sideview(
   ...,
   title = "Sideview Canvas",
-  viewer = shiny::paneViewer(minHeight = 500),
+  viewer = if (requireNamespace("rstudioapi", quietly = TRUE) &&
+    rstudioapi::isAvailable()) {
+     shiny::dialogViewer("Sideview Canvas", width =
+    1150, height = 750)
+ } else {
+     shiny::paneViewer(minHeight = 500)
+ },
   run = interactive()
 )
 }

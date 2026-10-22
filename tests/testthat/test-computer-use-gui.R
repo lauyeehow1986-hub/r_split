@@ -178,6 +178,8 @@ test_that("Computer Use GUI: Scenario 3 - Precision column port clicking / conne
 
   expect_true(isTRUE(s3$portA_connecting))
   expect_true(isTRUE(s3$portA_connected))
+  expect_true(isTRUE(s3$escape_cancelled))
+  expect_true(isTRUE(s3$th_connected))
   expect_gte(s3$connectors_count, 1L)
 
   # Cubic bezier spline path assertion: starts with 'M ' and contains ' C '

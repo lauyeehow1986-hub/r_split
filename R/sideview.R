@@ -54,7 +54,11 @@ sv_find_tables <- function(env = parent.frame()) {
 #' }
 sideview <- function(...,
                      title = "Sideview Canvas",
-                     viewer = shiny::paneViewer(minHeight = 500),
+                     viewer = if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+                       shiny::dialogViewer("Sideview Canvas", width = 1150, height = 750)
+                     } else {
+                       shiny::paneViewer(minHeight = 500)
+                     },
                      run = interactive()) {
   # Capture expressions and evaluate items
   dots_exprs <- as.list(substitute(list(...))[-1])
@@ -125,7 +129,11 @@ sideview <- function(...,
 #' @return Result of `sideview(...)`.
 #' @export
 sideview_addin <- function(env = .GlobalEnv,
-                           viewer = shiny::paneViewer(minHeight = 500),
+                           viewer = if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+                       shiny::dialogViewer("Sideview Canvas", width = 1150, height = 750)
+                     } else {
+                       shiny::paneViewer(minHeight = 500)
+                     },
                            run = interactive()) {
   tables <- sv_find_tables(env)
   

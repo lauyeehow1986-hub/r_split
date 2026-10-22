@@ -996,45 +996,179 @@ function sendToShiny(name, value) {
       self.openFilterPopover(cardEl, colName, th.cellIndex, filterBtn);
     });
 
-    // Column Connection Port Handling
-    this.container.addEventListener('click', function (e) {
-      var port = e.target.closest('.sideview-col-port');
-      if (!port) return;
+    // Column Connection Port Handling (Click port, click header, drag-to-connect, live draft spline)
+    var draftPath = null;
 
-      e.stopPropagation();
-      var cardEl = port.closest('.sideview-card');
+    function cleanupDraft() {
+      if (draftPath && draftPath.parentNode) {
+        draftPath.parentNode.removeChild(draftPath);
+      }
+      draftPath = null;
+      if (self.activePort && self.activePort.element) {
+        self.activePort.element.classList.remove('connecting');
+      }
+      self.activePort = null;
+      document.removeEventListener('mousemove', onDraftMove);
+    }
+    self.cleanupDraft = cleanupDraft;
+
+    function onDraftMove(moveEvent) {
+      if (!self.activePort || !draftPath) return;
+      var viewportRect = self.viewport.getBoundingClientRect();
+      var scale = self.panzoom ? self.panzoom.getScale() : 1;
+      var r1 = self.activePort.element.getBoundingClientRect();
+      var p1 = {
+        x: (r1.left + r1.width / 2 - viewportRect.left) / scale,
+        y: (r1.top + r1.height / 2 - viewportRect.top) / scale
+      };
+      var p2 = {
+        x: (moveEvent.clientX - viewportRect.left) / scale,
+        y: (moveEvent.clientY - viewportRect.top) / scale
+      };
+      draftPath.setAttribute('d', self.getBezierPath(p1, p2));
+    }
+
+    function startConnection(port, cardEl) {
+      cleanupDraft();
       var cardId = cardEl.dataset.cardId;
       var cardName = cardEl.dataset.cardName;
       var colName = port.dataset.colName;
 
+      self.activePort = { cardId: cardId, cardName: cardName, colName: colName, element: port };
+      port.classList.add('connecting');
+
+      draftPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      draftPath.setAttribute('class', 'sideview-connector-path sideview-connector-draft');
+      self.svg.appendChild(draftPath);
+      document.addEventListener('mousemove', onDraftMove);
+      self.showToast('Connecting ' + cardName + '.' + colName + ' — click another column or port to link', 'info');
+    }
+
+    function completeConnection(targetPort, targetCardEl) {
+      if (!self.activePort) return;
+      var toCardId = targetCardEl.dataset.cardId;
+      var toCardName = targetCardEl.dataset.cardName;
+      var toColName = targetPort.dataset.colName;
+
+      if (self.activePort.cardId === toCardId) {
+        self.showToast('Cannot link columns within the same table', 'warning');
+        cleanupDraft();
+        return;
+      }
+
+      var fromCard = self.activePort.cardId;
+      var fromTable = self.activePort.cardName;
+      var fromCol = self.activePort.colName;
+      var fromElement = self.activePort.element;
+
+      cleanupDraft();
+
+      self.addConnection({
+        fromCard: fromCard,
+        fromTable: fromTable,
+        fromCol: fromCol,
+        fromElement: fromElement,
+        toCard: toCardId,
+        toTable: toCardName,
+        toCol: toColName,
+        toElement: targetPort,
+        type: 'left_join'
+      });
+
+      self.showToast('Linked ' + fromTable + '.' + fromCol + ' ↔ ' + toCardName + '.' + toColName, 'success');
+    }
+
+    this.container.addEventListener('click', function (e) {
+      var port = e.target.closest('.sideview-col-port');
+      var th = e.target.closest('th');
+
       if (!self.activePort) {
-        // Start connection
-        self.activePort = { cardId: cardId, cardName: cardName, colName: colName, element: port };
-        port.classList.add('connecting');
+        if (port) {
+          e.stopPropagation();
+          var cardEl = port.closest('.sideview-card');
+          if (cardEl) startConnection(port, cardEl);
+        }
       } else {
-        // Attempt connect
-        if (self.activePort.cardId === cardId) {
-          // Cannot connect within same card
-          self.activePort.element.classList.remove('connecting');
-          self.activePort = null;
+        // Active port is set (connecting)
+        if (port) {
+          e.stopPropagation();
+          var cardEl = port.closest('.sideview-card');
+          if (cardEl) completeConnection(port, cardEl);
           return;
         }
 
-        // Establish connection
-        self.activePort.element.classList.remove('connecting');
-        self.addConnection({
-          fromCard: self.activePort.cardId,
-          fromTable: self.activePort.cardName,
-          fromCol: self.activePort.colName,
-          fromElement: self.activePort.element,
-          toCard: cardId,
-          toTable: cardName,
-          toCol: colName,
-          toElement: port,
-          type: 'left_join'
-        });
+        if (th) {
+          var targetPort = th.querySelector('.sideview-col-port');
+          var cardEl = th.closest('.sideview-card');
+          if (targetPort && cardEl) {
+            e.stopPropagation();
+            completeConnection(targetPort, cardEl);
+            return;
+          }
+        }
 
-        self.activePort = null;
+        // Click outside or canvas background cancels draft
+        if (!e.target.closest('.sideview-drawer') && !e.target.closest('.sideview-toolbar')) {
+          cleanupDraft();
+        }
+      }
+    });
+
+    // Drag-to-connect support
+    this.container.addEventListener('mousedown', function (e) {
+      var port = e.target.closest('.sideview-col-port');
+      if (!port) return;
+      var cardEl = port.closest('.sideview-card');
+      if (!cardEl) return;
+      e.stopPropagation();
+
+      var startX = e.clientX;
+      var startY = e.clientY;
+      var dragged = false;
+
+      startConnection(port, cardEl);
+
+      function onPointerDragMove(moveEvt) {
+        if (Math.abs(moveEvt.clientX - startX) > 4 || Math.abs(moveEvt.clientY - startY) > 4) {
+          dragged = true;
+        }
+      }
+
+      function onPointerDragUp(upEvt) {
+        document.removeEventListener('mousemove', onPointerDragMove);
+        document.removeEventListener('mouseup', onPointerDragUp);
+
+        if (dragged) {
+          var dropTarget = document.elementFromPoint ? document.elementFromPoint(upEvt.clientX, upEvt.clientY) : null;
+          if (dropTarget) {
+            var targetPort = dropTarget.closest('.sideview-col-port');
+            var targetTh = dropTarget.closest('th');
+            if (targetPort) {
+              var targetCard = targetPort.closest('.sideview-card');
+              if (targetCard) completeConnection(targetPort, targetCard);
+              return;
+            } else if (targetTh) {
+              var p = targetTh.querySelector('.sideview-col-port');
+              var c = targetTh.closest('.sideview-card');
+              if (p && c) {
+                completeConnection(p, c);
+                return;
+              }
+            }
+          }
+          cleanupDraft();
+        }
+      }
+
+      document.addEventListener('mousemove', onPointerDragMove);
+      document.addEventListener('mouseup', onPointerDragUp);
+    });
+
+    // Pressing Escape cancels draft
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && self.activePort) {
+        cleanupDraft();
+        self.showToast('Cancelled column connection', 'info');
       }
     });
 
@@ -1158,8 +1292,8 @@ function sendToShiny(name, value) {
           colType ? '    <span class="sideview-col-type">(' + colType + ')</span>' : '',
           '  </div>',
           '  <div class="col-header-tools">',
-          '    <button class="sideview-th-btn sideview-sort-btn" data-action="sort-col" data-col-name="' + colName + '" title="Sort column (Asc / Desc / Reset)">⇅</button>',
-          '    <button class="sideview-th-btn sideview-filter-btn" data-action="filter-col" data-col-name="' + colName + '" title="Filter column">🔍</button>',
+          '    <button class="sideview-th-btn sideview-sort-btn" data-action="sort-col" data-col-name="' + colName + '" title="Sort column (Asc / Desc / Reset)">&#x21C5;</button>',
+          '    <button class="sideview-th-btn sideview-filter-btn" data-action="filter-col" data-col-name="' + colName + '" title="Filter column">&#x1F50D;</button>',
           '    <span class="sideview-col-port" data-col-name="' + colName + '" title="Connect to map field"></span>',
           '  </div>',
           '</div>'
@@ -1712,6 +1846,7 @@ function sendToShiny(name, value) {
 
     // 0. Remove suggested splines and reset suggested connections
     this.clearSuggestedSplines();
+    if (this.cleanupDraft) this.cleanupDraft();
 
     // 1. Remove all SVG connector paths from the DOM
     if (this.connections && this.connections.length > 0) {

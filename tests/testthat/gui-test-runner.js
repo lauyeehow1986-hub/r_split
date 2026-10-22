@@ -571,6 +571,19 @@ function runAllScenarios() {
   portB.click();
   const s3_portA_connected = !portA.classList.contains('connecting');
 
+  // Test Escape cancellation
+  engine.clearOperations();
+  portA.click();
+  const s3_escape_active = engine.activePort !== null;
+  document.dispatchEvent(new MockEvent('keydown', { key: 'Escape' }));
+  const s3_escape_cancelled = engine.activePort === null;
+
+  // Test header th click-to-connect
+  portA.click();
+  const thTarget = card2.querySelector('th[data-col-name="patient_id"]');
+  thTarget.click();
+  const s3_th_connected = engine.connections.length === 1;
+
   const connectors = svg.querySelectorAll('.sideview-connector-path');
   const activePath = connectors.length > 0 ? connectors[0] : null;
   const pathD = activePath ? activePath.getAttribute('d') : '';
@@ -579,6 +592,8 @@ function runAllScenarios() {
   results.scenario3 = {
     portA_connecting: s3_portA_connecting,
     portA_connected: s3_portA_connected,
+    escape_cancelled: s3_escape_active && s3_escape_cancelled,
+    th_connected: s3_th_connected,
     connectors_count: connectors.length,
     has_bezier: !!pathD && pathD.startsWith('M ') && pathD.includes(' C '),
     path_d: pathD,

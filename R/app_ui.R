@@ -239,8 +239,8 @@ render_card_tag <- function(card, index = 1L) {
           ),
           htmltools::tags$div(
             class = "col-header-tools",
-            htmltools::tags$button(class = "sideview-th-btn sideview-sort-btn", `data-action` = "sort-col", `data-col-name` = col, title = "Sort column (Asc / Desc / Reset)", "⇅"),
-            htmltools::tags$button(class = "sideview-th-btn sideview-filter-btn", `data-action` = "filter-col", `data-col-name` = col, title = "Filter column", "🔍"),
+            htmltools::tags$button(class = "sideview-th-btn sideview-sort-btn", `data-action` = "sort-col", `data-col-name` = col, title = "Sort column (Asc / Desc / Reset)", htmltools::HTML("&#x21C5;")),
+            htmltools::tags$button(class = "sideview-th-btn sideview-filter-btn", `data-action` = "filter-col", `data-col-name` = col, title = "Filter column", htmltools::HTML("&#x1F50D;")),
             htmltools::tags$span(class = "sideview-col-port", `data-col-name` = col, title = "Connect to map field")
           ),
           profile_summary
