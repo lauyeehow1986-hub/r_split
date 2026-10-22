@@ -365,7 +365,8 @@ sideview_ui <- function(cards = list(), title = "Sideview Canvas") {
     htmltools::tags$button(class = "sideview-btn", `data-action` = "zoom-reset", title = "Reset View", "100%"),
     htmltools::tags$span(class = "sideview-toolbar-divider"),
     htmltools::tags$button(class = "sideview-btn active", `data-action` = "toggle-snap", title = "Snap to Edge", "Snap"),
-    htmltools::tags$button(class = "sideview-btn", `data-action` = "toggle-drawer", title = "Toggle Drawer", "Drawer")
+    htmltools::tags$button(class = "sideview-btn", `data-action` = "toggle-drawer", title = "Toggle Drawer", "Drawer"),
+    htmltools::tags$button(class = "sideview-btn", `data-action` = "toggle-fullscreen", title = "Toggle Fullscreen Canvas", htmltools::HTML("&#x26F6; Fullscreen"))
   )
   
   # Swatch palette

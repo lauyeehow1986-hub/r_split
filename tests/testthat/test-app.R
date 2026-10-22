@@ -729,5 +729,27 @@ test_that("render_card_tag renders maximize button and column resizers", {
   expect_match(rendered, "title=\"cyl (numeric)\"", fixed = TRUE)
 })
 
+test_that("sideview toolbar renders Fullscreen button and accepts shorthand viewer options", {
+  ui <- sideview_ui()
+  rendered_ui <- as.character(ui)
+  expect_match(rendered_ui, "data-action=\"toggle-fullscreen\"", fixed = TRUE)
+  expect_match(rendered_ui, "&#x26F6; Fullscreen", fixed = TRUE)
+
+  # Shorthand viewer strings in sideview
+  app_browser <- sideview(mtcars, viewer = "browser", run = FALSE)
+  expect_s3_class(app_browser, "shiny.appobj")
+
+  app_dialog <- sideview(mtcars, viewer = "dialog", run = FALSE)
+  expect_s3_class(app_dialog, "shiny.appobj")
+
+  app_pane <- sideview(mtcars, viewer = "pane", run = FALSE)
+  expect_s3_class(app_pane, "shiny.appobj")
+
+  # In sideview_addin
+  addin_browser <- sideview_addin(viewer = "browser", run = FALSE)
+  expect_s3_class(addin_browser, "shiny.appobj")
+})
+
+
 
 

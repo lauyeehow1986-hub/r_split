@@ -40,7 +40,9 @@ sv_find_tables <- function(env = parent.frame()) {
 #'   `table`, `gt`, `flextable`, `htmlwidgets`), named or unnamed.
 #' @param title Title for the gadget viewer.
 #' @param viewer Shiny viewer gadget display mode (e.g. `shiny::paneViewer()`,
-#'   `shiny::dialogViewer()`, or `shiny::browserViewer()`).
+#'   `shiny::dialogViewer()`, `shiny::browserViewer()`), or a character shorthand
+#'   (`"browser"`, `"dialog"`, or `"pane"`). Default is `shiny::dialogViewer()`
+#'   (width 1400, height 900) when RStudio is available, otherwise `shiny::paneViewer()`.
 #' @param run Logical; if `TRUE`, launches the interactive gadget via
 #'   `shiny::runGadget()`. If `FALSE`, returns the `shiny.appobj` definition
 #'   without launching (useful for testing or embedding). Defaults to `interactive()`.
@@ -55,11 +57,22 @@ sv_find_tables <- function(env = parent.frame()) {
 sideview <- function(...,
                      title = "Sideview Canvas",
                      viewer = if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
-                       shiny::dialogViewer("Sideview Canvas", width = 1150, height = 750)
+                       shiny::dialogViewer("Sideview Canvas", width = 1400, height = 900)
                      } else {
                        shiny::paneViewer(minHeight = 500)
                      },
                      run = interactive()) {
+  # Normalize character shorthand for viewer ("browser", "dialog", "pane")
+  if (is.character(viewer) && length(viewer) == 1L) {
+    v_type <- match.arg(tolower(viewer), c("browser", "dialog", "pane"))
+    viewer <- switch(
+      v_type,
+      "browser" = shiny::browserViewer(),
+      "dialog"  = shiny::dialogViewer(title, width = 1400, height = 900),
+      "pane"    = shiny::paneViewer(minHeight = 500)
+    )
+  }
+
   # Capture expressions and evaluate items
   dots_exprs <- as.list(substitute(list(...))[-1])
   dots_vals <- list(...)
@@ -123,18 +136,31 @@ sideview <- function(...,
 #' and launches the Sideview interactive multi-table canvas gadget.
 #'
 #' @param env Environment to search for tables (defaults to `.GlobalEnv`).
-#' @param viewer Shiny viewer gadget display mode (default `shiny::paneViewer()`).
+#' @param viewer Shiny viewer gadget display mode, or character shorthand
+#'   (`"browser"`, `"dialog"`, or `"pane"`). Default is `shiny::dialogViewer()`
+#'   (width 1400, height 900) when RStudio is available, otherwise `shiny::paneViewer()`.
 #' @param run Logical indicating whether to execute the gadget. Default `interactive()`.
 #'
 #' @return Result of `sideview(...)`.
 #' @export
 sideview_addin <- function(env = .GlobalEnv,
                            viewer = if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
-                       shiny::dialogViewer("Sideview Canvas", width = 1150, height = 750)
-                     } else {
-                       shiny::paneViewer(minHeight = 500)
-                     },
+                             shiny::dialogViewer("Sideview Canvas", width = 1400, height = 900)
+                           } else {
+                             shiny::paneViewer(minHeight = 500)
+                           },
                            run = interactive()) {
+  # Normalize character shorthand for viewer ("browser", "dialog", "pane")
+  if (is.character(viewer) && length(viewer) == 1L) {
+    v_type <- match.arg(tolower(viewer), c("browser", "dialog", "pane"))
+    viewer <- switch(
+      v_type,
+      "browser" = shiny::browserViewer(),
+      "dialog"  = shiny::dialogViewer("Sideview Canvas", width = 1400, height = 900),
+      "pane"    = shiny::paneViewer(minHeight = 500)
+    )
+  }
+
   tables <- sv_find_tables(env)
   
   if (length(tables) == 0) {

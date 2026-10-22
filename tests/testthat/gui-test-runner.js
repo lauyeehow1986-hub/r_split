@@ -403,6 +403,8 @@ function runAllScenarios() {
 
   // Set up globals
   global.window = global;
+  if (!global.window.addEventListener) global.window.addEventListener = function () {};
+  if (!global.window.removeEventListener) global.window.removeEventListener = function () {};
   global.MockElement = MockElement;
   global.MockEvent = MockEvent;
   global.MouseEvent = MockEvent;

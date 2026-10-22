@@ -380,3 +380,21 @@ test_that("updateConnectors includes suggestedConnections and clearOperations ca
   )
 })
 
+test_that("sideview.js and sideview.css implement opaque filter popover and edge-to-edge canvas", {
+  js <- read_asset("sideview.js")
+  css <- read_asset("sideview.css")
+
+  # Popover opacity and z-index
+  expect_match(css, "\\.sideview-filter-popover[^{]*\\{[^}]*background:\\s*#ffffff\\s*!important", perl = TRUE)
+  expect_match(css, "\\.sideview-filter-popover[^{]*\\{[^}]*z-index:\\s*9999\\s*!important", perl = TRUE)
+
+  # Edge-to-edge canvas container sizing
+  expect_match(css, "html,\\s*body\\s*\\{[^}]*margin:\\s*0\\s*!important", perl = TRUE)
+  expect_match(css, "\\.sideview-container\\s*\\{[^}]*position:\\s*absolute\\s*!important", perl = TRUE)
+
+  # Fullscreen canvas toggle action in JS
+  expect_match(js, "toggle-fullscreen", info = "sideview.js must handle toggle-fullscreen action")
+  expect_match(js, "requestFullscreen", info = "sideview.js must invoke requestFullscreen")
+  expect_match(js, "closePopover", info = "sideview.js must support dismissing filter popover")
+})
+

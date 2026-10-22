@@ -9,7 +9,7 @@ sideview_addin(
   viewer = if (requireNamespace("rstudioapi", quietly = TRUE) &&
     rstudioapi::isAvailable()) {
      shiny::dialogViewer("Sideview Canvas", width =
-    1150, height = 750)
+    1400, height = 900)
  } else {
      shiny::paneViewer(minHeight = 500)
  },
@@ -19,7 +19,9 @@ sideview_addin(
 \arguments{
 \item{env}{Environment to search for tables (defaults to \code{.GlobalEnv}).}
 
-\item{viewer}{Shiny viewer gadget display mode (default \code{shiny::paneViewer()}).}
+\item{viewer}{Shiny viewer gadget display mode, or character shorthand
+(\code{"browser"}, \code{"dialog"}, or \code{"pane"}). Default is \code{shiny::dialogViewer()}
+(width 1400, height 900) when RStudio is available, otherwise \code{shiny::paneViewer()}.}
 
 \item{run}{Logical indicating whether to execute the gadget. Default \code{interactive()}.}
 }

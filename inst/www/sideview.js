@@ -542,7 +542,8 @@ function sendToShiny(name, value) {
         '<span class="sideview-toolbar-divider"></span>',
         '<button class="sideview-btn active" data-action="toggle-snap" title="Snap to Edge">Snap</button>',
         '<button class="sideview-btn" data-action="suggest-mappings" title="Suggest Mappings across tables">Auto Map</button>',
-        '<button class="sideview-btn" data-action="toggle-drawer" title="Toggle Drawer">Drawer</button>'
+        '<button class="sideview-btn" data-action="toggle-drawer" title="Toggle Drawer">Drawer</button>',
+        '<button class="sideview-btn" data-action="toggle-fullscreen" title="Toggle Fullscreen Canvas">&#x26F6; Fullscreen</button>'
       ].join('');
       this.container.appendChild(toolbar);
     }
@@ -709,6 +710,29 @@ function sendToShiny(name, value) {
       } else if (action === 'close-drawer') {
         var dr = self.container.querySelector('.sideview-drawer');
         if (dr) dr.classList.add('collapsed');
+      } else if (action === 'toggle-fullscreen') {
+        var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+        if (!isFs) {
+          var targetEl = document.documentElement || self.container;
+          var req = targetEl.requestFullscreen || targetEl.webkitRequestFullscreen || targetEl.mozRequestFullScreen || targetEl.msRequestFullscreen;
+          if (req) {
+            try {
+              var p = req.call(targetEl);
+              if (p && p.catch) p.catch(function () {});
+            } catch (err) {}
+          }
+          btn.classList.add('active');
+        } else {
+          var exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+          if (exit) {
+            try {
+              var ep = exit.call(document);
+              if (ep && ep.catch) ep.catch(function () {});
+            } catch (err) {}
+          }
+          btn.classList.remove('active');
+        }
+        setTimeout(function () { self.updateConnectors(); }, 150);
       } else if (action === 'inject-script') {
         sendToShiny('inject_script', { code: self.generatedCode });
         if (self.shouldAutoClear()) {
@@ -1286,6 +1310,23 @@ function sendToShiny(name, value) {
         }
       });
     });
+
+    // Window resize & Fullscreen change connector synchronization
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('resize', function () {
+        self.updateConnectors();
+      });
+    }
+    var onFullscreenChange = function () {
+      var fsBtn = self.container.querySelector('[data-action="toggle-fullscreen"]');
+      var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      if (fsBtn) fsBtn.classList.toggle('active', isFs);
+      self.updateConnectors();
+    };
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      document.addEventListener('fullscreenchange', onFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+    }
   };
 
   /**
@@ -2135,7 +2176,8 @@ function sendToShiny(name, value) {
     var existing = document.querySelector('.sideview-filter-popover');
     if (existing) {
       var isSame = existing._sourceBtn === btn;
-      existing.remove();
+      if (existing._closePopover) existing._closePopover();
+      else existing.remove();
       if (isSame) return;
     }
 
@@ -2143,6 +2185,21 @@ function sendToShiny(name, value) {
     var popover = document.createElement('div');
     popover.className = 'sideview-filter-popover';
     popover._sourceBtn = btn;
+
+    function closePopover() {
+      document.removeEventListener('mousedown', onDocMouseDown, true);
+      if (popover.parentNode) popover.remove();
+    }
+    popover._closePopover = closePopover;
+
+    var onDocMouseDown = function (evt) {
+      if (!popover.contains(evt.target) && evt.target !== btn && !btn.contains(evt.target)) {
+        closePopover();
+      }
+    };
+    setTimeout(function () {
+      document.addEventListener('mousedown', onDocMouseDown, true);
+    }, 10);
 
     popover.innerHTML = [
       '<div class="sideview-filter-popover-header">',
@@ -2176,7 +2233,7 @@ function sendToShiny(name, value) {
     input.focus();
 
     popover.querySelector('.sideview-filter-close').addEventListener('click', function () {
-      popover.remove();
+      closePopover();
     });
 
     popover.querySelector('.sideview-filter-clear').addEventListener('click', function () {
@@ -2191,7 +2248,7 @@ function sendToShiny(name, value) {
         }
       }
       btn.classList.remove('active');
-      popover.remove();
+      closePopover();
       self.updateConnectors();
       self.showToast('Cleared filter on ' + colName, 'info');
     });
@@ -2199,7 +2256,7 @@ function sendToShiny(name, value) {
     function applyFilter() {
       var val = input.value.trim();
       if (!val) {
-        popover.remove();
+        closePopover();
         return;
       }
       var op = select.value;
@@ -2283,14 +2340,14 @@ function sendToShiny(name, value) {
         code: filterCode
       });
 
-      popover.remove();
+      closePopover();
       self.updateConnectors();
     }
 
     popover.querySelector('.sideview-filter-apply').addEventListener('click', applyFilter);
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') applyFilter();
-      else if (e.key === 'Escape') popover.remove();
+      else if (e.key === 'Escape') closePopover();
     });
   };
 
