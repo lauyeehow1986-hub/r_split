@@ -12,7 +12,8 @@ sv_code_join(df1, df2, col1, col2 = col1, join_type = "left", pipe = FALSE)
 
 - df1:
 
-  Name of the first data frame.
+  Name of the first data frame (optional / can be NULL when constructing
+  intermediate piped join segments).
 
 - df2:
 

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sideview</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,11 +32,51 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="sideview-development-version">sideview (development version)<a class="anchor" aria-label="anchor" href="#sideview-development-version"></a></h2>
-<div class="section level3">
-<h3 id="recent-features--enhancements-development-version">Recent Features &amp; Enhancements<a class="anchor" aria-label="anchor" href="#recent-features--enhancements-development-version"></a></h3>
+<h2 class="pkg-version" data-toc-text="0.2.0" id="sideview-020">sideview 0.2.0<a class="anchor" aria-label="anchor" href="#sideview-020"></a></h2>
 <div class="section level4">
-<h4 id="interactive-canvas--navigation-development-version">Interactive Canvas &amp; Navigation<a class="anchor" aria-label="anchor" href="#interactive-canvas--navigation-development-version"></a></h4>
+<h4 id="pillar-big-data-scalability--cran-readiness-0-2-0">Pillar 1: Big Data Scalability &amp; CRAN Readiness<a class="anchor" aria-label="anchor" href="#pillar-big-data-scalability--cran-readiness-0-2-0"></a></h4>
+<ul><li>
+<strong>DOM Virtualization Engine</strong>: Added <code>VirtualTable</code> in <code>sideview.js</code> and <code>sideview.css</code>, bounding active table DOM nodes to ~30 rows with dynamic spacer elements and supporting 100k+ rows at 60 FPS scrolling.</li>
+<li>
+<strong>Arrow &amp; DuckDB Lazy Ingestion</strong>: Added zero-copy schema extraction methods (<code>sv_normalize.arrow_table()</code>, <code>sv_normalize.Dataset()</code>, <code>sv_normalize.tbl_duckdb_connection()</code>) with soft-dependency guards in <code>Suggests:</code>.</li>
+<li>
+<strong>Multi-Key Composite Joins</strong>: Enhanced <code><a href="../reference/sv_code_join.html">sv_code_join()</a></code> and server reactivity to support vector keys (<code>by = c("key1" = "key1", "key2" = "key2")</code>) and relational multi-table pipeline chaining.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="pillar-advanced-visual-wrangling--profiling-0-2-0">Pillar 2: Advanced Visual Wrangling &amp; Profiling<a class="anchor" aria-label="anchor" href="#pillar-advanced-visual-wrangling--profiling-0-2-0"></a></h4>
+<ul><li>
+<strong>Visual Pivoting Codegen</strong>: Added <code><a href="../reference/sv_code_pivot_longer.html">sv_code_pivot_longer()</a></code> and <code><a href="../reference/sv_code_pivot_wider.html">sv_code_pivot_wider()</a></code> with full syntactic backtick escaping and custom <code>values_fn</code> aggregation.</li>
+<li>
+<strong>Group &amp; Summarize Builder</strong>: Added <code><a href="../reference/sv_code_group_summarize.html">sv_code_group_summarize()</a></code> generating reproducible <code>dplyr::group_by(...) %&gt;% dplyr::summarise(..., .groups = 'drop')</code> workflows.</li>
+<li>
+<strong>Header Column Profiling</strong>: Embedded inline SVG 5-bin distribution sparklines (<code>&lt;svg class="sideview-sparkline"&gt;</code>), categorical frequency distribution bars (<code>.sideview-cat-profile</code>), and color-coded missingness badges (<code>.sideview-na-badge</code>) with 25k-sample performance optimization.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="pillar-canvas-state-persistence--cloud-sharing-0-2-0">Pillar 3: Canvas State Persistence &amp; Cloud Sharing<a class="anchor" aria-label="anchor" href="#pillar-canvas-state-persistence--cloud-sharing-0-2-0"></a></h4>
+<ul><li>
+<strong>State Serialization APIs</strong>: Added <code><a href="../reference/new_sideview_state.html">new_sideview_state()</a></code>, <code><a href="../reference/sv_save_state.html">sv_save_state()</a></code>, and <code><a href="../reference/sv_load_state.html">sv_load_state()</a></code> supporting both portable <code>.json</code> and native R <code>.rds</code> workspace serialization for canvas pan/zoom, card coordinates, splines, and pipelines.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="pillar-intelligent-copilot--auto-mapping-0-2-0">Pillar 4: Intelligent Copilot &amp; Auto-Mapping<a class="anchor" aria-label="anchor" href="#pillar-intelligent-copilot--auto-mapping-0-2-0"></a></h4>
+<ul><li>
+<strong>Heuristic Foreign Key Detection</strong>: Added <code><a href="../reference/sv_suggest_mappings.html">sv_suggest_mappings()</a></code> computing 3-part composite scores (name similarity with ID suffix detection, type compatibility, and Jaccard overlap) with precomputed unique sets and logical column exclusion.</li>
+<li>
+<strong>Suggested Splines &amp; Discrepancy Auto-Clean</strong>: Added animated dashed suggested splines (<code>.sideview-spline-suggested dashMove</code>) with click-to-accept join mapping, and <code><a href="../reference/sv_auto_clean_rules.html">sv_auto_clean_rules()</a></code> / <code><a href="../reference/sv_auto_clean_rules.html">sv_code_auto_clean()</a></code> for automatic <code><a href="https://dplyr.tidyverse.org/reference/case_match.html" class="external-link">dplyr::case_match()</a></code> crosswalk synthesis.</li>
+<li>
+<strong>Conversational AI Copilot Drawer</strong>: Added multi-turn chat tab with context retention (<code><a href="../reference/sv_build_chat_prompt.html">sv_build_chat_prompt()</a></code>), turn-based history sliding window (20 turns), and active pipeline code guards.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="pillar-automated-computer-use--gui-verification-0-2-0">Pillar 5: Automated Computer Use &amp; GUI Verification<a class="anchor" aria-label="anchor" href="#pillar-automated-computer-use--gui-verification-0-2-0"></a></h4>
+<ul><li>
+<strong>Automated GUI Test Suite</strong>: Added <code>tests/testthat/test-computer-use-gui.R</code> and headless DOM test runner <code>gui-test-runner.js</code> verifying 6 core interaction scenarios (canvas coordinates, dragging, port click / spline connect, suggested spline acceptance, sorting/filtering, drawer action dispatch) with diagnostic dumps in <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.0" id="sideview-010">sideview 0.1.0<a class="anchor" aria-label="anchor" href="#sideview-010"></a></h2>
+<div class="section level3">
+<h3 id="recent-features--enhancements-0-1-0">Recent Features &amp; Enhancements<a class="anchor" aria-label="anchor" href="#recent-features--enhancements-0-1-0"></a></h3>
+<div class="section level4">
+<h4 id="interactive-canvas--navigation-0-1-0">Interactive Canvas &amp; Navigation<a class="anchor" aria-label="anchor" href="#interactive-canvas--navigation-0-1-0"></a></h4>
 <ul><li>
 <strong>Dual Synchronized Scrolling</strong>: The sync scroll feature (<code>[🔗]</code> link icon in card headers) now synchronously locks both vertical rows (<code>scrollTop</code>) and horizontal columns (<code>scrollLeft</code>) in proportional lockstep across wide datasets.</li>
 <li>
@@ -53,7 +93,7 @@
 <strong>Syntax Validation Suite</strong>: Added automated Node.js syntax parsing in <code>tests/testthat/test-assets.R</code> to ensure zero runtime script syntax errors.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="data-manipulation--code-generation-development-version">Data Manipulation &amp; Code Generation<a class="anchor" aria-label="anchor" href="#data-manipulation--code-generation-development-version"></a></h4>
+<h4 id="data-manipulation--code-generation-0-1-0">Data Manipulation &amp; Code Generation<a class="anchor" aria-label="anchor" href="#data-manipulation--code-generation-0-1-0"></a></h4>
 <ul><li>
 <strong>Interactive Column Sorting</strong>:
 <ul><li>Tri-state toggle on column header sort indicators (<code>▲</code> Ascending, <code>▼</code> Descending, <code>original</code>).</li>
@@ -72,7 +112,7 @@
 <strong>List-Column &amp; Vector Safeguard</strong>: Hardened HTML grid table rendering in <code><a href="../reference/sideview_ui.html">sideview_ui()</a></code> to handle nested list-columns and vectors safely with a <code>[list]</code> placeholder, avoiding length &gt; 1 evaluation errors under R 4.2+.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="action-drawer--workflow-controls-development-version">Action Drawer &amp; Workflow Controls<a class="anchor" aria-label="anchor" href="#action-drawer--workflow-controls-development-version"></a></h4>
+<h4 id="action-drawer--workflow-controls-0-1-0">Action Drawer &amp; Workflow Controls<a class="anchor" aria-label="anchor" href="#action-drawer--workflow-controls-0-1-0"></a></h4>
 <ul><li>
 <strong>Four Execution Modes</strong>:
 <ol style="list-style-type: decimal"><li>
@@ -91,7 +131,7 @@
 </ul></li>
 </ul></div>
 <div class="section level4">
-<h4 id="llm-assistance--privacy-context-development-version">LLM Assistance &amp; Privacy Context<a class="anchor" aria-label="anchor" href="#llm-assistance--privacy-context-development-version"></a></h4>
+<h4 id="llm-assistance--privacy-context-0-1-0">LLM Assistance &amp; Privacy Context<a class="anchor" aria-label="anchor" href="#llm-assistance--privacy-context-0-1-0"></a></h4>
 <ul><li>
 <strong>Local Ollama Integration</strong>: Full support for local models such as <code>gemma4:26b</code> and <code>llama3.2</code> with zero data leakage (<code>http://localhost:11434</code>).</li>
 <li>
@@ -100,14 +140,14 @@
 <strong>Privacy-Safe Schema Synthesis</strong>: Prompts contain table names, column types, and high-level distribution ranges without exposing confidential raw records.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="testing--verification-development-version">Testing &amp; Verification<a class="anchor" aria-label="anchor" href="#testing--verification-development-version"></a></h4>
+<h4 id="testing--verification-0-1-0">Testing &amp; Verification<a class="anchor" aria-label="anchor" href="#testing--verification-0-1-0"></a></h4>
 <ul><li>
 <strong>705 Automated Tests</strong>: Full test suite across 9 contexts with 100% pass rate covering universal normalization, codegen, LLM prompts, RStudio bridges, reactive gadget events, HTML widgets, and static asset syntax.</li>
 </ul><hr></div>
 </div>
 </div>
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.0" id="sideview-010">sideview 0.1.0<a class="anchor" aria-label="anchor" href="#sideview-010"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.1.0" id="sideview-010-1">sideview 0.1.0<a class="anchor" aria-label="anchor" href="#sideview-010-1"></a></h2>
 <ul><li>Initial release of <strong><code>sideview</code></strong>: Multi-Table 2D Infinite Canvas for interactive data exploration, visual field mapping, and LLM-assisted Tidyverse code generation.</li>
 <li>Universal S3 normalization engine (<code><a href="../reference/sv_normalize.html">sv_normalize()</a></code>) supporting <code>data.frame</code>, <code>tibble</code>, <code><a href="https://rdrr.io/r/base/table.html" class="external-link">base::table</a></code>, <code>matrix</code>, <code>gt</code>, <code>flextable</code>, and <code>htmlwidgets</code>.</li>
 <li>Standalone self-contained HTML widget export via <code><a href="../reference/save_sideview.html">save_sideview()</a></code>.</li>

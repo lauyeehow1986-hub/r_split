@@ -48,9 +48,12 @@ reference:
       - renderSideview
 
   - title: "Tidyverse Code Generation Engine"
-    desc: "Generate reproducible dplyr and forcats pipelines from visual canvas interactions."
+    desc: "Generate reproducible dplyr, tidyr, and forcats pipelines from visual canvas interactions."
     contents:
       - sv_code_join
+      - sv_code_pivot_longer
+      - sv_code_pivot_wider
+      - sv_code_group_summarize
       - sv_code_rename
       - sv_code_mutate
       - sv_code_filter
@@ -59,14 +62,25 @@ reference:
       - sv_escape_ident
 
   - title: "Categorical Discrepancies & Recoding"
-    desc: "Detect fuzzy string mismatches and generate case_match or fct_recode pipelines."
+    desc: "Detect fuzzy string mismatches and generate case_match, fct_recode, or auto-cleanup rules."
     contents:
       - sv_detect_discrepancies
       - sv_code_recode
+      - sv_auto_clean_rules
 
-  - title: "Local Ollama & OpenAI LLM Engine"
-    desc: "Synthesize privacy-safe schema contexts and generate tidyverse code from natural language prompts."
+  - title: "Canvas State Persistence & Cloud Sharing"
+    desc: "Serialize complete canvas topologies, card positions, splines, and pipelines to JSON or RDS."
     contents:
+      - new_sideview_state
+      - sv_save_state
+      - sv_load_state
+      - print.sideview_state
+
+  - title: "Intelligent Copilot & Auto-Mapping"
+    desc: "Proactively suggest candidate joins and orchestrate multi-turn AI assistance with context retention."
+    contents:
+      - sv_suggest_mappings
+      - sv_build_chat_prompt
       - sv_build_schema_context
       - sv_build_prompt
       - sv_call_llm

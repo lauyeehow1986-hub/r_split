@@ -21,9 +21,10 @@ mental reconciliation of column mappings error-prone.
 infinite canvas**. You can place any number of heterogeneous tabular
 datasets side-by-side, zoom and pan freely across the workspace,
 visually connect columns across tables with interactive SVG splines,
-sort and filter columns directly on table headers, automatically detect
-categorical discrepancies, and generate idiomatic `tidyverse` code that
-pastes directly into your active RStudio script editor.
+sort and filter columns directly on table headers, inspect inline SVG
+distribution sparklines, automatically detect categorical discrepancies,
+and generate idiomatic `tidyverse` code that pastes directly into your
+active RStudio script editor.
 
 [`library`](https://rdrr.io/r/base/library.html)`(`[`sideview`](https://lauyeehow1986-hub.github.io/sideview/)`)`` `` ``# Launch side-by-side multi-table canvas in RStudio Viewer or Gadget Window`` `[`sideview`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview.md)`(``patients``, ``visits``, ``lab_results``, ``gt_summary``)`
 
@@ -37,20 +38,25 @@ pastes directly into your active RStudio script editor.
 | **Navigation** | Basic paging | **Smooth mouse-wheel zoom (25%–250%) & canvas pan** |
 | **Table Alignment** | ❌ None | ✅ **Magnetic snap-to-edge docking** |
 | **Synchronized Scrolling** | ❌ None | ✅ **Dual vertical (`scrollTop`) and horizontal (`scrollLeft`) sync** |
+| **100k+ Row Performance** | ❌ Browser freezing | ✅ **DOM Virtualization (`VirtualTable` ~30 rows active, 60 FPS)** |
+| **Big Data Ingestion** | `data.frame` only | ✅ **Apache Arrow (`arrow_table`, `Dataset`) & DuckDB (`tbl_duckdb_connection`)** |
 | **Multi-Format Ingestion** | `data.frame` only | ✅ **`data.frame`, `tibble`, `table`, `matrix`, `gt`, `flextable`, `htmlwidgets`** |
 | **Interactive Sorting** | ❌ None | ✅ **Tri-state header click (Asc / Desc / Reset) generating [`dplyr::arrange`](https://dplyr.tidyverse.org/reference/arrange.html)** |
 | **Interactive Filtering** | ❌ None | ✅ **Header filter popover (`>`, `<`, `==`, `contains`) generating [`dplyr::filter`](https://dplyr.tidyverse.org/reference/filter.html)** |
+| **Visual Table Reshaping** | ❌ None | ✅ **Visual [`tidyr::pivot_longer()`](https://tidyr.tidyverse.org/reference/pivot_longer.html) & [`tidyr::pivot_wider()`](https://tidyr.tidyverse.org/reference/pivot_wider.html) builders** |
+| **Visual Aggregation** | ❌ None | ✅ **Visual [`dplyr::group_by()`](https://dplyr.tidyverse.org/reference/group_by.html) + [`dplyr::summarise()`](https://dplyr.tidyverse.org/reference/summarise.html) builder** |
+| **Header Column Profiling** | ❌ None | ✅ **Inline SVG 5-bin sparklines, categorical frequency bars, NA badges** |
 | **Visual Column Mapping** | ❌ None | ✅ **Click-to-connect interactive SVG splines** |
-| **Spline Disconnection** | ❌ None | ✅ **Click or right-click directly on spline curves to disconnect** |
-| **Discrepancy Detection** | ❌ None | ✅ **Exact & fuzzy string matching with distance scoring** |
-| **Categorical Recoding** | ❌ None | ✅ **Automatic [`dplyr::case_match`](https://dplyr.tidyverse.org/reference/case_match.html) & [`forcats::fct_recode`](https://forcats.tidyverse.org/reference/fct_recode.html)** |
-| **Tidyverse Code Generation** | ❌ None | ✅ **`left_join`, `inner_join`, `mutate`, `rename`, `filter`, `arrange`** |
+| **Multi-Key Composite Joins** | ❌ None | ✅ **Composite vector keys (`by = c("k1" = "k1", "k2" = "k2")`) & DAG chaining** |
+| **Suggested Splines Copilot** | ❌ None | ✅ **Proactive foreign key detection (`sv_suggest_mappings`) with 1-click accept** |
+| **Discrepancy Detection** | ❌ None | ✅ **Vectorized exact & fuzzy string matching with distance scoring** |
+| **Auto-Cleanup Rules** | ❌ None | ✅ **1-Click [`dplyr::case_match`](https://dplyr.tidyverse.org/reference/case_match.html) generation for casing, whitespace, & typos** |
+| **Conversational Copilot** | ❌ None | ✅ **Multi-turn dialogue drawer with context retention (20-turn window)** |
+| **Workspace Persistence** | ❌ None | ✅ **Serialize & restore full canvas topology (`.json` and `.rds`)** |
 | **Console & Script Execution** | ❌ None | ✅ **`Insert Script`, `Run & Exit`, `Run in R` (`.GlobalEnv`), and `Run Console`** |
-| **Pipeline Reset** | ❌ None | ✅ **Dedicated `Clear` button and `[✓] Auto-clear` toggle** |
-| **AI / LLM Assistance** | ❌ None | ✅ **Local Ollama (e.g. `gemma4:26b`, `llama3.2`) & Cloud OpenAI** |
-| **RStudio Script Insertion** | ❌ None | ✅ **Direct 1-click cursor paste via `rstudioapi`** |
 | **Standalone HTML Export** | ❌ None | ✅ **Self-contained `htmlwidget` ([`save_sideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/save_sideview.md))** |
 | **Quarto & Rmd Support** | ❌ None | ✅ **Embeddable via [`sideview_widget()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview_widget.md)** |
+| **Automated GUI Testing** | ❌ None | ✅ **Headless DOM & Computer Use verification harness (1,210 tests passing)** |
 
 ------------------------------------------------------------------------
 
@@ -66,22 +72,24 @@ flowchart TD
         GT["gt / gtsummary"] --> NORM
         FLEX["flextable"] --> NORM
         WID["htmlwidgets"] --> NORM
+        ARROW["arrow::Table / Dataset"] --> NORM
+        DUCK["duckdb::tbl_duckdb_connection"] --> NORM
     end
 
     subgraph Core ["sideview Cards & State"]
-        NORM --> CARDS["sideview_card Objects (Grid / HTML / Widget)"]
+        NORM --> CARDS["sideview_card Objects (Grid / HTML / Widget / Lazy)"]
+        CARDS --> STATE["sideview_state (JSON / RDS Persistence)"]
     end
 
     subgraph Gadget ["Interactive Mode: sideview()"]
-        CARDS --> GADGET["Shiny Gadget (Canvas + Panzoom)"]
-        GADGET --> MAP["Interactive SVG Field Mapping"]
+        CARDS --> GADGET["Shiny Gadget (Canvas + Panzoom + VirtualTable)"]
+        GADGET --> MAP["Interactive SVG Field Mapping & Suggested Splines"]
         GADGET --> SORT["Header Sort & Filter Popovers"]
-        GADGET --> DISC["Discrepancy & Recode Engine"]
-        GADGET --> LLM["LLM Code Generator (Ollama / OpenAI)"]
-        LLM --> RSTUDIO["rstudioapi: Insert to Active Script / Console"]
-        MAP --> RSTUDIO
-        SORT --> RSTUDIO
-        DISC --> RSTUDIO
+        GADGET --> PROF["Inline SVG Sparklines & Profiling Badges"]
+        GADGET --> DISC["Discrepancy & Auto-Clean Engine"]
+        GADGET --> RESHAPE["Visual Pivot & Group/Summarize Builders"]
+        GADGET --> COPILOT["Conversational Multi-Turn AI Copilot Drawer"]
+        GADGET --> RSTUDIO["rstudioapi: Insert to Active Script / Console / .GlobalEnv"]
     end
 
     subgraph Widget ["Export Mode: save_sideview()"]
@@ -91,120 +99,99 @@ flowchart TD
     end
 ```
 
-1.  **Interactive Shiny Gadget & RStudio Addin
-    ([`sideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview.md))**:
-    - Bi-directional reactive communication between the JavaScript
-      Panzoom canvas and the R session.
-    - Live column mapping, interactive sorting, filter popovers,
-      discrepancy detection, and AI prompting.
-    - Code delivery into the user’s active editor buffer via
-      [`rstudioapi::insertText()`](https://rstudio.github.io/rstudioapi/reference/rstudio-documents.html),
-      execution in console upon exit via `stopApp()`, or immediate
-      evaluation in `.GlobalEnv`.
-2.  **Standalone HTML Widget Export
-    ([`save_sideview()`](https://lauyeehow1986-hub.github.io/sideview/reference/save_sideview.md))**:
-    - Self-contained, zero-dependency HTML bundles embeddable in
-      reports, Quarto presentations, or shared offline with
-      stakeholders.
-
 ------------------------------------------------------------------------
 
-## Key Features
+## Core Capabilities
 
-### 1. Infinite 2D Panzoom Canvas
+### 1. High-Performance Infinite 2D Panzoom Canvas & Virtualization
 
-- **Focal-point Zoom**: Smooth scaling from 25% to 250% centered on your
-  mouse cursor.
-- **Canvas Panning**: Drag canvas background to traverse large
-  multi-table layouts.
-- **Snap-to-Edge Alignment**: Drag cards into alignment with magnetic
-  guidelines for side-by-side inspection.
-- **Dual Synchronized Scrolling**: Click the `[🔗]` link icon in card
-  headers to lock both vertical rows (`scrollTop`) and horizontal
-  columns (`scrollLeft`) in exact proportional lockstep across wide
+- **DOM Virtualization (`VirtualTable`)**: Renders datasets containing
+  **100,000+ rows** smoothly at 60 FPS by dynamically maintaining a
+  sliding window of ~30 active `<tr>` elements with spacer elements.
+- **Mouse Wheel Zoom**: Smooth scaling centered on the cursor position
+  (25% to 250% zoom).
+- **Panning & Dragging**: Click-and-drag navigation across the infinite
+  canvas, with magnetic edge-docking for table cards.
+- **Dual Synchronized Scrolling**: Locks both vertical rows
+  (`scrollTop`) and horizontal columns (`scrollLeft`) across linked
   tables.
 
-### 2. Interactive Column Sorting & Filtering
+### 2. Universal Multi-Format Normalization
 
-- **Click to Sort (`▲` / `▼` / `⇅`)**: Click the sort arrow in any
-  column header to toggle between Ascending, Descending, and Original
-  order. Rows reorder live on the canvas and
-  [`dplyr::arrange()`](https://dplyr.tidyverse.org/reference/arrange.html)
-  tidyverse code appears instantly in the Action Drawer.
-- **Floating Filter Popover (`🔍`)**: Click the filter magnifying glass
-  on any column to open a floating popover. Filter by numeric ranges
-  (`>`, `>=`, `<`, `<=`), exact matches (`==`, `!=`), or string matching
-  (`contains`). Non-matching rows are hidden live and
-  [`dplyr::filter()`](https://dplyr.tidyverse.org/reference/filter.html)
-  code is automatically synthesized.
+- **`data.frame` & `tibble`**: Virtualized interactive grid cards.
+- **[`arrow::Table`](https://arrow.apache.org/docs/r/reference/Table-class.html)
+  & `Dataset`**: Zero-copy schema extraction previewing `head(50)`
+  without materializing multi-gigabyte files.
+- **`duckdb` Connections**: DBI query schemas previewing `head(50)` with
+  lazy counts.
+- **`gt` & `flextable`**: Styled HTML display while extracting raw data
+  frames (`x[["_data"]]` / `x[["body"]][["dataset"]]`) for tidyverse
+  code generation.
+- **`htmlwidgets`**: Embedded container cards.
 
-### 3. Click-to-Connect Field Mapping & Spline Disconnection
+### 3. Visual Field Mapping & Relational DAG
 
-- **Connect Columns**: Click a column port in Table A and a column port
-  in Table B to draw a cubic bezier curve between them and open the
-  **Action Drawer** with the corresponding
-  [`dplyr::left_join()`](https://dplyr.tidyverse.org/reference/mutate-joins.html)
-  or
-  [`dplyr::mutate()`](https://dplyr.tidyverse.org/reference/mutate.html)
-  pipeline.
-- **Disconnect Splines**: Hover over any spline curve (it turns red with
-  a glow indicator) and click it directly to remove the connection. You
-  can also right-click on any spline or column port to disconnect.
+- **Interactive SVG Splines**: Connect column ports across tables to
+  generate idiomatic tidyverse joins. Click or right-click directly on
+  spline curves to disconnect.
 
-### 4. Action Drawer Execution & Clearing
+- **Composite Multi-Key Joins**: Draw multiple splines between the same
+  tables to emit composite keys:
 
-The Action Drawer provides 4 dedicated execution actions plus clearing
-controls: - **`Insert Script`**: Pastes code directly into your active
-`.R` document at the cursor position (runs independently without
-interrupting the gadget). - **`Run & Exit`**: Sends code to the R
-console and immediately closes the gadget, triggering instant execution
-in RStudio. - **`Run in R`**: Evaluates code directly inside your
-current R session environment (`.GlobalEnv`) while keeping the canvas
-open, accompanied by a status toast showing output dimensions. -
-**`Run Console`**: Queues code into the RStudio console buffer (executes
-upon closing the gadget). - **`Clear` Button**: Instantly clears all
-connector splines, active filters, sort orders, and resets the code
-block. - **`[✓] Auto-clear` Toggle**: When enabled, automatically clears
-operations whenever you click `Insert Script` or `Copy`.
+  `patients`` ``%>%`` `` ``dplyr``::`[`left_join`](https://dplyr.tidyverse.org/reference/mutate-joins.html)`(``visits``, by ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"patient_id"`` ``=`` ``"patient_id"``, ``"site_id"`` ``=`` ``"site_id"``)``)`
 
-### 5. Universal Multi-Format Normalization
+- **Proactive Foreign Key Detection
+  ([`sv_suggest_mappings()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_suggest_mappings.md))**:
+  Heuristic scoring engine (name similarity, type compatibility, Jaccard
+  value overlap) automatically discovers candidate foreign keys and
+  renders them as animated dashed suggested splines
+  (`.sideview-spline-suggested`) with 1-click acceptance.
 
-`sideview` seamlessly accepts heterogeneous R tabular structures in a
-single call: - **`data.frame` & `tibble`**: Virtualized interactive grid
-cards. - **[`base::table`](https://rdrr.io/r/base/table.html) &
-`matrix`**: Automatically converted to 2D frequency/matrix grid cards. -
-**`gt` & `gtsummary`**: Rendered with raw HTML styling, while preserving
-the underlying data frame
-(`gt_tbl$`\_data`) for full code generation. - **`flextable`**: Rendered with full styling, retaining the underlying dataset for joins and mutations. - **`htmlwidgets`** (`DT`,`reactable\`,
-etc.): Visual embedded cards for side-by-side comparison.
+### 4. Advanced Visual Wrangling & Profiling
 
-### 6. Categorical Discrepancy Detection & Recoding
+- **Header Column Profiling**: Embedded inline SVG 5-bin distribution
+  sparklines (`<svg class="sideview-sparkline">`), categorical frequency
+  distribution bars, and color-coded missingness badges
+  (`.sideview-na-badge`) with hover range tooltips.
+- **Visual Table Reshaping**:
+  - [`sv_code_pivot_longer()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_pivot_longer.md):
+    Emits
+    [`tidyr::pivot_longer()`](https://tidyr.tidyverse.org/reference/pivot_longer.html)
+    pipelines.
+  - [`sv_code_pivot_wider()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_pivot_wider.md):
+    Emits
+    [`tidyr::pivot_wider()`](https://tidyr.tidyverse.org/reference/pivot_wider.html)
+    pipelines with aggregation (`values_fn`).
+- **Group & Summarize Builder**:
+  [`sv_code_group_summarize()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_group_summarize.md)
+  generates reproducible
+  `group_by(...) %>% summarise(..., .groups = 'drop')` pipelines.
 
-- Cross-table discrepancy analysis
-  ([`sv_detect_discrepancies()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_detect_discrepancies.md)):
+### 5. Canvas State Persistence & Cloud Sharing
 
-  - Identifies exact matches, unique categories in Table A, and unique
-    categories in Table B.
-  - Uses vectorized Levenshtein distance calculations to spot fuzzy
-    typos (e.g., `"M"` vs `"Male"`, `"Compl."` vs `"Completed"`).
+- **Workspace Serialization**: Save and restore complete canvas layouts
+  (pan/zoom, card coordinates, splines, filters, sorts, pipeline code)
+  to `.json` or `.rds`:
 
-- Emits reproducible recoding pipelines using
-  [`dplyr::case_match`](https://dplyr.tidyverse.org/reference/case_match.html)
-  or
-  [`forcats::fct_recode`](https://forcats.tidyverse.org/reference/fct_recode.html):
+  `# Save active canvas`` `[`sv_save_state`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_save_state.md)`(``state``, file ``=`` ``"study_canvas.json"``)`` `` ``# Load and launch`` `[`sv_load_state`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_load_state.md)`(``"study_canvas.json"``, launch ``=`` ``TRUE``)`
 
-  `patients`` ``<-`` ``patients`` ``%>%`` `` ``dplyr``::`[`mutate`](https://dplyr.tidyverse.org/reference/mutate.html)`(``status ``=`` ``dplyr``::`[`case_match`](https://dplyr.tidyverse.org/reference/case_match.html)`(`` `` ``status_raw``,`` `` `[`c`](https://rdrr.io/r/base/c.html)`(``"Compl."``, ``"completed"``)`` ``~`` ``"Completed"``,`` `` ``"InProg"`` ``~`` ``"In Progress"``,`` `` .default ``=`` ``status_raw`` `` ``)``)`
+### 6. Conversational AI Copilot Drawer
 
-### 7. Dual LLM AI Code Assistant (Local Ollama & OpenAI)
+- **Multi-Turn Context Retention**: Dialogue chat tab in the Action
+  Drawer retaining conversation history, active pipeline R code, and
+  privacy-safe schema summaries.
+- **Zero Data Leakage**: Never transmits raw patient records. Works
+  seamlessly with local Ollama (`gemma4:26b`, `llama3.2`) or cloud
+  OpenAI-compatible APIs.
+- **1-Click Code Injection**: “Replace Pipeline” updates drawer code,
+  while “Insert into Editor” pastes directly at the cursor via
+  `rstudioapi`.
 
-- **Local Ollama Integration**: Zero data leakage — connects to your
-  local Ollama instance (`http://localhost:11434`) running models such
-  as `gemma4:26b`, `llama3.2`, or `deepseek-coder`.
-- **Cloud OpenAI-Compatible Providers**: Works with OpenAI (`gpt-4o`,
-  `gpt-4o-mini`), OpenRouter, Groq, LM Studio, or vLLM.
-- **Privacy-Safe Schema Context**: Prompts automatically synthesize
-  column names, data types, and non-sensitive distributions *without*
-  leaking confidential individual records.
+### 7. Automated Computer Use & Headless GUI QA
+
+- Complete headless DOM test harness (`gui-test-runner.js`) simulating
+  canvas coordinates, card dragging, port connections, suggested
+  splines, and drawer actions across 1,210 automated unit tests.
 
 ------------------------------------------------------------------------
 
@@ -218,7 +205,8 @@ Install the development version of `sideview` from GitHub:
 
 - **Core**: `shiny`, `htmltools`, `htmlwidgets`, `dplyr`, `httr2`,
   `jsonlite`, `rstudioapi`
-- **Suggested**: `gt`, `flextable`, `testthat`, `knitr`, `rmarkdown`
+- **Suggested**: `arrow`, `duckdb`, `DBI`, `shinytest2`, `gt`,
+  `flextable`, `testthat`, `knitr`, `rmarkdown`
 
 ------------------------------------------------------------------------
 
@@ -226,9 +214,9 @@ Install the development version of `sideview` from GitHub:
 
 ### 1. Launch Interactive Gadget with Heterogeneous Tables
 
-[`library`](https://rdrr.io/r/base/library.html)`(`[`sideview`](https://lauyeehow1986-hub.github.io/sideview/)`)`` `[`library`](https://rdrr.io/r/base/library.html)`(`[`dplyr`](https://dplyr.tidyverse.org)`)`` `` ``# Standard data frame`` ``patients`` ``<-`` `[`data.frame`](https://rdrr.io/r/base/data.frame.html)`(`` `` patient_id ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"P01"``, ``"P02"``, ``"P03"``, ``"P04"``)``,`` `` age ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``45``, ``52``, ``38``, ``61``)``,`` `` gender_raw ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"Male"``, ``"Female"``, ``"M"``, ``"Fem"``)``,`` `` stringsAsFactors ``=`` ``FALSE`` ``)`` `` ``# Tibble`` ``visits`` ``<-`` `[`tibble`](https://tibble.tidyverse.org/reference/tibble.html)`(`` `` subject_id ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"P01"``, ``"P02"``, ``"P03"``, ``"P05"``)``,`` `` systolic_bp ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``120``, ``140``, ``115``, ``130``)``,`` `` visit_date ``=`` `[`as.Date`](https://rdrr.io/r/base/as.Date.html)`(`[`c`](https://rdrr.io/r/base/c.html)`(``"2024-01-10"``, ``"2024-01-15"``, ``"2024-02-01"``, ``"2024-02-10"``)``)`` ``)`` `` ``# Base R contingency table`` ``dx_freq`` ``<-`` `[`table`](https://rdrr.io/r/base/table.html)`(`[`c`](https://rdrr.io/r/base/c.html)`(``"Hypertension"``, ``"Diabetes"``, ``"Hypertension"``, ``"Asthma"``)``)`` `` ``# Launch Sideview canvas`` `[`sideview`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview.md)`(``patients``, ``visits``, diagnoses ``=`` ``dx_freq``)`
+[`library`](https://rdrr.io/r/base/library.html)`(`[`sideview`](https://lauyeehow1986-hub.github.io/sideview/)`)`` `[`library`](https://rdrr.io/r/base/library.html)`(`[`dplyr`](https://dplyr.tidyverse.org)`)`` `` ``# Standard data frame`` ``patients`` ``<-`` `[`data.frame`](https://rdrr.io/r/base/data.frame.html)`(`` `` patient_id ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"P01"``, ``"P02"``, ``"P03"``, ``"P04"``)``,`` `` age ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``45``, ``52``, ``38``, ``61``)``,`` `` gender_raw ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"Male"``, ``"Female"``, ``"M"``, ``"Fem"``)``,`` `` stringsAsFactors ``=`` ``FALSE`` ``)`` `` ``# Tibble`` ``visits`` ``<-`` `[`tibble`](https://tibble.tidyverse.org/reference/tibble.html)`(`` `` patient_id ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``"P01"``, ``"P02"``, ``"P03"``, ``"P05"``)``,`` `` systolic_bp ``=`` `[`c`](https://rdrr.io/r/base/c.html)`(``120``, ``140``, ``115``, ``130``)``,`` `` visit_date ``=`` `[`as.Date`](https://rdrr.io/r/base/as.Date.html)`(`[`c`](https://rdrr.io/r/base/c.html)`(``"2024-01-10"``, ``"2024-01-15"``, ``"2024-02-01"``, ``"2024-02-10"``)``)`` ``)`` `` ``# Base R contingency table`` ``dx_freq`` ``<-`` `[`table`](https://rdrr.io/r/base/table.html)`(`[`c`](https://rdrr.io/r/base/c.html)`(``"Hypertension"``, ``"Diabetes"``, ``"Hypertension"``, ``"Asthma"``)``)`` `` ``# Launch Sideview canvas`` `[`sideview`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview.md)`(``patients``, ``visits``, diagnoses ``=`` ``dx_freq``)`
 
-### 2. Including `gt` and `flextable` Objects
+### 2. Including `gt`, `flextable`, and Big Data Objects
 
 [`library`](https://rdrr.io/r/base/library.html)`(`[`gt`](https://gt.rstudio.com)`)`` `[`library`](https://rdrr.io/r/base/library.html)`(`[`flextable`](https://ardata-fr.github.io/flextable-book/)`)`` `` ``gt_summary`` ``<-`` `[`gt`](https://gt.rstudio.com/reference/gt.html)`(``patients``[``, `[`c`](https://rdrr.io/r/base/c.html)`(``"patient_id"``, ``"age"``)``]``)`` ``flex_visits`` ``<-`` `[`flextable`](https://davidgohel.github.io/flextable/reference/flextable.html)`(`[`as.data.frame`](https://rdrr.io/r/base/as.data.frame.html)`(``visits``)``)`` `` ``# Both stylized HTML tables and raw data grids are accessible on the canvas`` `[`sideview`](https://lauyeehow1986-hub.github.io/sideview/reference/sideview.md)`(``patients``, ``visits``, ``gt_summary``, ``flex_visits``)`
 
@@ -255,64 +243,6 @@ sideview_widget(patients, visits, width = "100%", height = "650px")
 
 ------------------------------------------------------------------------
 
-## LLM Configuration Guide
-
-`sideview` includes an AI prompt bar for natural-language data
-manipulation (e.g. *“Join patients and visits on ID, recode gender, and
-calculate average BP for patients over 50”*).
-
-### Option A: Local Ollama (Recommended — 100% Private, Zero Data Leakage)
-
-1.  Start your local Ollama instance with your model (e.g. `gemma4:26b`
-    or `llama3.2`):
-
-    ``` bash
-    ollama run gemma4:26b
-    ```
-
-2.  Configure `sideview` in your R session before launching:
-
-    [`options`](https://rdrr.io/r/base/options.html)`(`` `` sideview.llm_backend ``=`` ``"ollama"``,`` `` sideview.llm_model ``=`` ``"gemma4:26b"``,`` `` sideview.llm_endpoint ``=`` ``"http://localhost:11434"`` ``)`
-
-3.  Type your prompt in the floating AI bar and press Enter: \> *“Left
-    join patients with visits matching patient_id to subject_id”*
-
-### Option B: Cloud OpenAI-Compatible Providers
-
-[`Sys.setenv`](https://rdrr.io/r/base/Sys.setenv.html)`(``OPENAI_API_KEY ``=`` ``"sk-..."``)`` `` `[`options`](https://rdrr.io/r/base/options.html)`(`` `` sideview.llm_backend ``=`` ``"openai"``,`` `` sideview.llm_model ``=`` ``"gpt-4o-mini"``,`` `` sideview.llm_endpoint ``=`` ``"https://api.openai.com/v1"`` ``)`
-
-Compatible with: - **OpenAI**: `https://api.openai.com/v1` -
-**OpenRouter**: `https://openrouter.ai/api/v1` - **Groq**:
-`https://api.groq.com/openai/v1` - **LM Studio**:
-`http://localhost:1234/v1` - **vLLM**: `http://localhost:8000/v1`
-
-------------------------------------------------------------------------
-
-## Keyboard Shortcuts & Canvas Controls
-
-| Action | Control / Shortcut | Description |
-|:---|:---|:---|
-| **Zoom In / Out** | `Mouse Wheel` | Smooth scaling centered at cursor position (25% to 250%) |
-| **Pan Canvas** | `Click + Drag` on canvas background | Pan across the infinite canvas |
-| **Reset View** | `Click "100%" in Toolbar` | Centers and resets zoom to 100% |
-| **Move Table Card** | `Drag Card Header` | Reposition card anywhere on canvas |
-| **Dock / Snap** | `Drag near card edge` | Snaps cards together with magnetic guidelines |
-| **Sort Column** | `Click "⇅" icon in column header` | Toggles Ascending (`▲`), Descending (`▼`), and Reset |
-| **Filter Column** | `Click "🔍" icon in column header` | Opens popover to filter rows; generates [`dplyr::filter()`](https://dplyr.tidyverse.org/reference/filter.html) |
-| **Rename Column** | `Double-click column name` | Inline edit; generates [`dplyr::rename()`](https://dplyr.tidyverse.org/reference/rename.html) |
-| **Color Highlight** | `Click Cell + Palette Swatch` | Annotate cells with custom highlighter colors |
-| **Synchronized Scroll** | `Click Link Icon (🔗)` on card header | Locks vertical rows and horizontal columns in lockstep |
-| **Connect Columns** | `Click Column A Port` then `Column B Port` | Draws SVG bezier spline and opens Codegen Drawer |
-| **Disconnect Spline** | `Click directly on spline curve` | Removes connection and re-evaluates pipeline code |
-| **Clear Operations** | `Click "Clear" in Action Drawer` | Resets all splines, active filters, and sort orders |
-| **Auto-Clear Toggle** | `Check [✓] Auto-clear in Drawer` | Automatically resets canvas when code is copied or inserted |
-| **Insert Code to Script** | `Click "Insert Script"` | Pastes generated R code at cursor via `rstudioapi` |
-| **Run & Exit** | `Click "Run & Exit"` | Sends code to console and closes gadget immediately |
-| **Run in R Session** | `Click "Run in R"` | Evaluates in `.GlobalEnv` with row/column toast notification |
-| **Submit AI Prompt** | `Click "Send" in AI Bar` | Sends natural language prompt to configured LLM |
-
-------------------------------------------------------------------------
-
 ## Complete Programmatic API Reference
 
 | Function | Module | Description |
@@ -323,20 +253,30 @@ Compatible with: - **OpenAI**: `https://api.openai.com/v1` -
 | `save_sideview(widget, file)` | Widget Export | Export canvas to standalone self-contained HTML file |
 | `sideviewOutput(id, ...)` | Shiny Integration | Shiny UI widget container |
 | `renderSideview(expr, ...)` | Shiny Integration | Shiny server rendering function |
-| `sv_normalize(x, name, id)` | Normalization | S3 generic converting tables to standardized cards |
+| `sv_normalize(x, name, id)` | Normalization | S3 generic converting tables (data.frame, Arrow, DuckDB, gt, flextable) to cards |
 | `sv_find_tables(env)` | Discovery | Detect all tabular objects in an environment |
-| `sv_code_join(...)` | Code Generation | Emits [`dplyr::left_join`](https://dplyr.tidyverse.org/reference/mutate-joins.html), `inner_join`, `full_join`, `anti_join` |
+| `sv_code_join(...)` | Code Generation | Emits [`dplyr::left_join`](https://dplyr.tidyverse.org/reference/mutate-joins.html), `inner_join`, `full_join`, `anti_join` with multi-key support |
+| `sv_code_pivot_longer(...)` | Code Generation | Emits [`tidyr::pivot_longer()`](https://tidyr.tidyverse.org/reference/pivot_longer.html) pipelines |
+| `sv_code_pivot_wider(...)` | Code Generation | Emits [`tidyr::pivot_wider()`](https://tidyr.tidyverse.org/reference/pivot_wider.html) pipelines with custom `values_fn` |
+| `sv_code_group_summarize(...)` | Code Generation | Emits `dplyr::group_by(...) %>% summarise(..., .groups = 'drop')` |
 | `sv_code_arrange(...)` | Code Generation | Emits [`dplyr::arrange()`](https://dplyr.tidyverse.org/reference/arrange.html) with optional descending order |
 | `sv_code_filter(...)` | Code Generation | Emits [`dplyr::filter()`](https://dplyr.tidyverse.org/reference/filter.html) expressions |
 | `sv_code_rename(...)` | Code Generation | Emits [`dplyr::rename()`](https://dplyr.tidyverse.org/reference/rename.html) with non-syntactic backtick escaping |
 | `sv_code_mutate(...)` | Code Generation | Emits [`dplyr::mutate()`](https://dplyr.tidyverse.org/reference/mutate.html) expressions |
 | `sv_code_select(...)` | Code Generation | Emits [`dplyr::select()`](https://dplyr.tidyverse.org/reference/select.html) column selections |
+| `sv_escape_ident(x)` | Code Generation | Wraps non-syntactic names and reserved words in backticks |
 | `sv_detect_discrepancies(...)` | Discrepancies | Vectorized exact & fuzzy Levenshtein discrepancy detection |
 | `sv_code_recode(...)` | Discrepancies | Emits [`dplyr::case_match()`](https://dplyr.tidyverse.org/reference/case_match.html) or [`forcats::fct_recode()`](https://forcats.tidyverse.org/reference/fct_recode.html) |
+| `sv_auto_clean_rules(...)` | Discrepancies | Generates automatic `case_match` rules for casing, whitespace, and typos |
+| `sv_suggest_mappings(...)` | Copilot | Heuristic foreign key candidate detection across tables |
+| `sv_build_chat_prompt(...)` | LLM Engine | Synthesizes multi-turn conversational chat prompt with context retention |
 | `sv_build_schema_context(...)` | LLM Engine | Privacy-safe metadata synthesis for LLM prompt |
 | `sv_build_prompt(...)` | LLM Engine | Constructs system instructions and user prompt |
 | `sv_call_llm(...)` | LLM Engine | Dispatches request to Ollama or OpenAI-compatible backend |
 | `sv_extract_code(...)` | LLM Engine | Extracts clean R code from markdown fences |
+| `new_sideview_state(...)` | Persistence | Constructor for `sideview_state` object |
+| `sv_save_state(state, file)` | Persistence | Serializes canvas workspace layout to `.json` or `.rds` |
+| `sv_load_state(file, ...)` | Persistence | Deserializes canvas workspace layout and launches or returns state |
 | [`sv_is_rstudio_available()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_is_rstudio_available.md) | RStudio Bridge | Checks if RStudio API is available |
 | `sv_insert_code(code)` | RStudio Bridge | Inserts text into active document editor |
 | `sv_send_to_console(code)` | RStudio Bridge | Sends code to R console for execution |

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sideview</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -114,7 +114,7 @@
       </dl></div><div class="section level2">
       <h2 id="tidyverse-code-generation-engine">Tidyverse Code Generation Engine<a class="anchor" aria-label="anchor" href="#tidyverse-code-generation-engine"></a></h2>
 
-      <div class="section-desc"><p>Generate reproducible dplyr and forcats pipelines from visual canvas interactions.</p></div>
+      <div class="section-desc"><p>Generate reproducible dplyr, tidyr, and forcats pipelines from visual canvas interactions.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -127,6 +127,27 @@
 
         </dt>
         <dd>Generate tidyverse Code for Relational Table Joins</dd>
+
+        <dt>
+
+          <code><a href="sv_code_pivot_longer.html">sv_code_pivot_longer()</a></code>
+
+        </dt>
+        <dd>Generate tidyverse Code for Reshaping Data from Wide to Long</dd>
+
+        <dt>
+
+          <code><a href="sv_code_pivot_wider.html">sv_code_pivot_wider()</a></code>
+
+        </dt>
+        <dd>Generate tidyverse Code for Reshaping Data from Long to Wide</dd>
+
+        <dt>
+
+          <code><a href="sv_code_group_summarize.html">sv_code_group_summarize()</a></code>
+
+        </dt>
+        <dd>Generate tidyverse Code for Grouping and Aggregating Data</dd>
 
         <dt>
 
@@ -172,7 +193,7 @@
       </dl></div><div class="section level2">
       <h2 id="categorical-discrepancies-recoding">Categorical Discrepancies &amp; Recoding<a class="anchor" aria-label="anchor" href="#categorical-discrepancies-recoding"></a></h2>
 
-      <div class="section-desc"><p>Detect fuzzy string mismatches and generate case_match or fct_recode pipelines.</p></div>
+      <div class="section-desc"><p>Detect fuzzy string mismatches and generate case_match, fct_recode, or auto-cleanup rules.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -192,10 +213,17 @@
 
         </dt>
         <dd>Generate tidyverse Code for Categorical Recoding and Discrepancy Crosswalks</dd>
-      </dl></div><div class="section level2">
-      <h2 id="local-ollama-openai-llm-engine">Local Ollama &amp; OpenAI LLM Engine<a class="anchor" aria-label="anchor" href="#local-ollama-openai-llm-engine"></a></h2>
 
-      <div class="section-desc"><p>Synthesize privacy-safe schema contexts and generate tidyverse code from natural language prompts.</p></div>
+        <dt>
+
+          <code><a href="sv_auto_clean_rules.html">sv_auto_clean_rules()</a></code> <code><a href="sv_auto_clean_rules.html">sv_code_auto_clean()</a></code>
+
+        </dt>
+        <dd>Generate tidyverse Code for Automatic Discrepancy Cleaning and Crosswalks</dd>
+      </dl></div><div class="section level2">
+      <h2 id="canvas-state-persistence-cloud-sharing">Canvas State Persistence &amp; Cloud Sharing<a class="anchor" aria-label="anchor" href="#canvas-state-persistence-cloud-sharing"></a></h2>
+
+      <div class="section-desc"><p>Serialize complete canvas topologies, card positions, splines, and pipelines to JSON or RDS.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -203,6 +231,57 @@
 
 
       <dl><dt>
+
+          <code><a href="new_sideview_state.html">new_sideview_state()</a></code>
+
+        </dt>
+        <dd>Create a New Sideview Canvas State Object</dd>
+
+        <dt>
+
+          <code><a href="sv_save_state.html">sv_save_state()</a></code>
+
+        </dt>
+        <dd>Save Canvas State to File</dd>
+
+        <dt>
+
+          <code><a href="sv_load_state.html">sv_load_state()</a></code>
+
+        </dt>
+        <dd>Load Canvas State from File</dd>
+
+        <dt>
+
+          <code><a href="print.sideview_state.html">print(<i>&lt;sideview_state&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Print Method for Sideview State Objects</dd>
+      </dl></div><div class="section level2">
+      <h2 id="intelligent-copilot-auto-mapping">Intelligent Copilot &amp; Auto-Mapping<a class="anchor" aria-label="anchor" href="#intelligent-copilot-auto-mapping"></a></h2>
+
+      <div class="section-desc"><p>Proactively suggest candidate joins and orchestrate multi-turn AI assistance with context retention.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="sv_suggest_mappings.html">sv_suggest_mappings()</a></code>
+
+        </dt>
+        <dd>Suggest Foreign Key Mappings Across Canvas Cards</dd>
+
+        <dt>
+
+          <code><a href="sv_build_chat_prompt.html">sv_build_chat_prompt()</a></code>
+
+        </dt>
+        <dd>Build Structured Multi-Turn Prompt for Conversational Copilot</dd>
+
+        <dt>
 
           <code><a href="sv_build_schema_context.html">sv_build_schema_context()</a></code>
 

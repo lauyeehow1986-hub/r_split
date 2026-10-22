@@ -6,6 +6,8 @@
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/LICENSE-text.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/news/index.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/index.html</loc></url>
+<url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/new_sideview_state.html</loc></url>
+<url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/print.sideview_state.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/renderSideview.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/save_sideview.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sideview.html</loc></url>
@@ -14,13 +16,18 @@
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sideview_server.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sideview_ui.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sideview_widget.html</loc></url>
+<url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_auto_clean_rules.html</loc></url>
+<url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_build_chat_prompt.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_build_prompt.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_build_schema_context.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_call_llm.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_arrange.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_filter.html</loc></url>
+<url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_group_summarize.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_join.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_mutate.html</loc></url>
+<url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_pivot_longer.html</loc></url>
+<url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_pivot_wider.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_recode.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_rename.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_select.html</loc></url>
@@ -30,7 +37,10 @@
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_find_tables.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_insert_code.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_is_rstudio_available.html</loc></url>
+<url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_load_state.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_normalize.html</loc></url>
+<url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_save_state.html</loc></url>
 <url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_send_to_console.html</loc></url>
+<url><loc>https://lauyeehow1986-hub.github.io/sideview/reference/sv_suggest_mappings.html</loc></url>
 </urlset>
 

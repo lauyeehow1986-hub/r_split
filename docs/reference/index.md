@@ -32,11 +32,17 @@ embed in Shiny.
 
 ## Tidyverse Code Generation Engine
 
-Generate reproducible dplyr and forcats pipelines from visual canvas
-interactions.
+Generate reproducible dplyr, tidyr, and forcats pipelines from visual
+canvas interactions.
 
 - [`sv_code_join()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_join.md)
   : Generate tidyverse Code for Relational Table Joins
+- [`sv_code_pivot_longer()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_pivot_longer.md)
+  : Generate tidyverse Code for Reshaping Data from Wide to Long
+- [`sv_code_pivot_wider()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_pivot_wider.md)
+  : Generate tidyverse Code for Reshaping Data from Long to Wide
+- [`sv_code_group_summarize()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_group_summarize.md)
+  : Generate tidyverse Code for Grouping and Aggregating Data
 - [`sv_code_rename()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_rename.md)
   : Generate tidyverse Code for Column Renaming
 - [`sv_code_mutate()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_mutate.md)
@@ -52,20 +58,42 @@ interactions.
 
 ## Categorical Discrepancies & Recoding
 
-Detect fuzzy string mismatches and generate case_match or fct_recode
-pipelines.
+Detect fuzzy string mismatches and generate case_match, fct_recode, or
+auto-cleanup rules.
 
 - [`sv_detect_discrepancies()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_detect_discrepancies.md)
   : Detect Exact Matches, Discrepancies, and Fuzzy Near-Matches
 - [`sv_code_recode()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_code_recode.md)
   : Generate tidyverse Code for Categorical Recoding and Discrepancy
   Crosswalks
+- [`sv_auto_clean_rules()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_auto_clean_rules.md)
+  [`sv_code_auto_clean()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_auto_clean_rules.md)
+  : Generate tidyverse Code for Automatic Discrepancy Cleaning and
+  Crosswalks
 
-## Local Ollama & OpenAI LLM Engine
+## Canvas State Persistence & Cloud Sharing
 
-Synthesize privacy-safe schema contexts and generate tidyverse code from
-natural language prompts.
+Serialize complete canvas topologies, card positions, splines, and
+pipelines to JSON or RDS.
 
+- [`new_sideview_state()`](https://lauyeehow1986-hub.github.io/sideview/reference/new_sideview_state.md)
+  : Create a New Sideview Canvas State Object
+- [`sv_save_state()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_save_state.md)
+  : Save Canvas State to File
+- [`sv_load_state()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_load_state.md)
+  : Load Canvas State from File
+- [`print(`*`<sideview_state>`*`)`](https://lauyeehow1986-hub.github.io/sideview/reference/print.sideview_state.md)
+  : Print Method for Sideview State Objects
+
+## Intelligent Copilot & Auto-Mapping
+
+Proactively suggest candidate joins and orchestrate multi-turn AI
+assistance with context retention.
+
+- [`sv_suggest_mappings()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_suggest_mappings.md)
+  : Suggest Foreign Key Mappings Across Canvas Cards
+- [`sv_build_chat_prompt()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_build_chat_prompt.md)
+  : Build Structured Multi-Turn Prompt for Conversational Copilot
 - [`sv_build_schema_context()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_build_schema_context.md)
   : Build a Privacy-Safe Schema Context from Sideview Cards
 - [`sv_build_prompt()`](https://lauyeehow1986-hub.github.io/sideview/reference/sv_build_prompt.md)
